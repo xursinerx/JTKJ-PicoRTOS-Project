@@ -1,7 +1,7 @@
 #include <shellSDK/SDK.h>
 // #include <icm42670.h>
 
-#include "tusb.h"
+//#include "tusb.h" //is it needed?
 #include "hardware/irq.h"
 #include "hardware/pwm.h"
 #include <shellSDK/ssd1306.h>
@@ -13,17 +13,15 @@
 static int addr = 0x68;
 static ssd1306_t disp;
 
-#ifdef i2c_default
-
 // Button related function
-static void init_sw1() {
+ void init_sw1() {
     // Initialize the button pin as an input with a pull-up resistor
     gpio_init(SW1_PIN);
     gpio_set_dir(SW1_PIN, GPIO_IN);
     gpio_pull_up(SW1_PIN);
 }
 
-static void init_sw2() {
+ void init_sw2() {
     // Initialize the button pin as an input with a pull-up resistor
     gpio_init(SW2_PIN);
     gpio_set_dir(SW2_PIN, GPIO_IN);
@@ -31,14 +29,14 @@ static void init_sw2() {
 }
 
 // LED related function
-static void init_red_led() {
+ void init_red_led() {
     // Initialize the LED pin as an output
     gpio_init(RED_LED_PIN);
     gpio_set_dir(RED_LED_PIN, GPIO_OUT);
 }
 
 // RGB related function
-static void init_rgb_led() {
+ void init_rgb_led() {
     // Initialize the PWM slice for each RGB pin
     gpio_set_function(RGB_LED_R, GPIO_FUNC_PWM);
     gpio_set_function(RGB_LED_G, GPIO_FUNC_PWM);
@@ -60,7 +58,7 @@ static void init_rgb_led() {
     pwm_set_enabled(slice_num_b, true);
 }
 
-static void rgb_led_write(uint8_t r, uint8_t g, uint8_t b) {
+ void rgb_led_write(uint8_t r, uint8_t g, uint8_t b) {
     // Get the PWM slice numbers for each GPIO pin
     uint slice_num_r = pwm_gpio_to_slice_num(RGB_LED_R);
     uint slice_num_g = pwm_gpio_to_slice_num(RGB_LED_G);
@@ -79,13 +77,13 @@ static void rgb_led_write(uint8_t r, uint8_t g, uint8_t b) {
 
 
 // Buzzer-related functions
-static void init_buzzer() {
+ void init_buzzer() {
     // Initialize the buzzer pin as an output
     gpio_init(BUZZER_PIN);
     gpio_set_dir(BUZZER_PIN, GPIO_OUT);
 }
 
-static void buzzer_play_tone(uint32_t frequency, uint32_t duration_ms) {
+ void buzzer_play_tone(uint32_t frequency, uint32_t duration_ms) {
     // Calculate the period (in microseconds) and number of cycles
     uint32_t period_us = 1000000 / frequency;
     uint32_t num_cycles = duration_ms * frequency / 1000;
@@ -99,7 +97,7 @@ static void buzzer_play_tone(uint32_t frequency, uint32_t duration_ms) {
     }
 }
 
-static void buzzer_turn_off() {
+ void buzzer_turn_off() {
     // Turn off the buzzer by setting the pin to low
     gpio_put(BUZZER_PIN, 0);
 }
@@ -133,7 +131,7 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop) {
 
 
 // Microphone related functions
-static int init_pdm_microphone() {
+ int init_pdm_microphone() {
     const struct pdm_microphone_config config = {
     // GPIO pin for the PDM DAT signal
     .gpio_data = PDM_DATA,
@@ -158,11 +156,11 @@ static int init_pdm_microphone() {
    
 }
 
-static int start_pdm_microphone(){
+ int start_pdm_microphone(){
     return pdm_microphone_start();
 }
 
-static void stop_pdm_microphone(){
+ void stop_pdm_microphone(){
     pdm_microphone_stop();
 }
 
@@ -178,7 +176,7 @@ int pdm_microphone_read_data(int16_t* buffer, size_t samples) {
 
 
 // Display-related functions
-static void init_display() {
+ void init_display() {
     // Initialize the SSD1306 display with external VCC
     disp.external_vcc = false;
     ssd1306_init(&disp, 128, 64, 0x3C, i2c_default);
@@ -187,7 +185,7 @@ static void init_display() {
     ssd1306_clear(&disp);
 }
 
-static void write_text(const char *word) {
+ void write_text(const char *word) {
     // Clear the display
     ssd1306_clear(&disp);
 
@@ -201,7 +199,7 @@ static void write_text(const char *word) {
     sleep_ms(800);
 }
 
-static void draw_circle(int16_t x0, int16_t y0, int16_t r) {
+ void draw_circle(int16_t x0, int16_t y0, int16_t r) {
     // Draw a circle using the Bresenham algorithm
     int16_t x = r - 1;
     int16_t y = 0;
@@ -233,7 +231,7 @@ static void draw_circle(int16_t x0, int16_t y0, int16_t r) {
     }
 }
 
-static void draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
+ void draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     // Draw a line between the specified points
     ssd1306_draw_line(&disp, x0, y0, x1, y1);
 
@@ -241,7 +239,7 @@ static void draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
     ssd1306_show(&disp);
 }
 
-static void draw_square(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+ void draw_square(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     // Draw a square at the specified position with the given width and height
     ssd1306_draw_square(&disp, x, y, w, h);
 
@@ -249,7 +247,7 @@ static void draw_square(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
     ssd1306_show(&disp);
 }
 
-static void clear_display() {
+ void clear_display() {
     // Clear the display
     ssd1306_clear(&disp);
 }
@@ -286,19 +284,19 @@ uint16_t veml6030_read_light() {
 
 // Temperature & Humidity sensor related function
 
-static uint8_t read_register(uint8_t reg) {
+ static int8_t read_register(uint8_t reg) {
     uint8_t data;
     i2c_write(HDC2021_I2C_ADDRESS, &reg, 1, true);
     i2c_read(HDC2021_I2C_ADDRESS, &data, 1, false);
     return data;
 }
 
-static void write_register(uint8_t reg, uint8_t value) {
+ static void write_register(uint8_t reg, uint8_t value) {
     uint8_t data[2] = {reg, value};
     i2c_write(HDC2021_I2C_ADDRESS, data, sizeof(data), false);
 }
 
-static void hdc2021_reset() {
+ static void hdc2021_reset() {
     uint8_t configContents = read_register(HDC2021_CONFIG);
     write_register(HDC2021_CONFIG, configContents | 0x80);
     sleep_ms(50);
@@ -325,7 +323,7 @@ static void hdc2021_setHumidityRes() {
     write_register(HDC2021_MEASUREMENT_CONFIG, configContents & 0xCF); // 14-bit
 }
 
-static void hdc2021_triggerMeasurement() {
+ static void hdc2021_triggerMeasurement() {
     uint8_t configContents = read_register(HDC2021_MEASUREMENT_CONFIG);
     write_register(HDC2021_MEASUREMENT_CONFIG, configContents | 0x01);
 }
@@ -354,7 +352,7 @@ void hdc2021_set_low_humidity_threshold(float humid) {
     write_register(HDC2021_HUMID_THR_L, humid_thresh);
 }
 
-static void hdc2021_init() {
+ void hdc2021_init() {
     hdc2021_reset();
     hdc2021_set_high_temp_threshold(50);
     hdc2021_set_low_temp_threshold(-30);
@@ -392,21 +390,21 @@ float hdc2021_read_humidity() {
 
 // IMU related function
 
-static int icm_i2c_write_byte(uint8_t reg, uint8_t value) {
+ int icm_i2c_write_byte(uint8_t reg, uint8_t value) {
     uint8_t buf[2] = { reg, value };
     int result = i2c_write_blocking(i2c_default, ICM42670_I2C_ADDRESS, buf, 2, false);
     return result == 2 ? 0 : -1;
 }
 
 // helper to read a byte from a register
-static int icm_i2c_read_byte(uint8_t reg, uint8_t *value) {
+ int icm_i2c_read_byte(uint8_t reg, uint8_t *value) {
     int result = i2c_write_blocking(i2c_default, ICM42670_I2C_ADDRESS, &reg, 1, true);
     if (result != 1) return -1;
     result = i2c_read_blocking(i2c_default, ICM42670_I2C_ADDRESS, value, 1, false);
     return result == 1 ? 0 : -1;
 }
 
-static int icm_i2c_read_bytes(uint8_t reg, uint8_t *buffer, uint8_t len) {
+ int icm_i2c_read_bytes(uint8_t reg, uint8_t *buffer, uint8_t len) {
     int result = i2c_write_blocking(i2c_default, ICM42670_I2C_ADDRESS, &reg, 1, true);
     if (result != 1) return -1;
     result = i2c_read_blocking(i2c_default, ICM42670_I2C_ADDRESS, buffer, len, false);
@@ -545,4 +543,3 @@ int ICM42670_read_sensor_data(int16_t *ax, int16_t *ay, int16_t *az,
         return 0; // success
 }
 
-#endif

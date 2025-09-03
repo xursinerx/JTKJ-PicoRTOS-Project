@@ -41,7 +41,7 @@ include(FreeRTOS_Kernel_import.cmake)
 
 # Add executable. Default name is the project name, version 0.1
 add_executable(${APP_NAME}
-    blink_RTOS.c
+    shell_example.c
     )
 
 # Configuration files should go in the include path. Make them available to all libraries at least for FreeRTOS
@@ -63,6 +63,11 @@ target_link_libraries(${APP_NAME}
   pico_stdlib
   FreeRTOS-Kernel-Heap4
   shellSDK
+  hardware_i2c
+  hardware_pio
+  hardware_dma
+  hardware_adc 
+  hardware_pwm
 )
 
 if (PICO_CYW43_SUPPORTED)

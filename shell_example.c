@@ -1,0 +1,244 @@
+
+#include <stdio.h>
+#include <FreeRTOS.h>
+#include <hardware/gpio.h>
+#include <hardware/i2c.h>
+#include <pico/stdlib.h>
+#include <queue.h>
+#include <task.h>
+
+#include <shellSDK/SDK.h>
+#include <pico/binary_info.h>
+
+#define SAMPLE_BUFFER_SIZE 256
+
+// Flag to indicate button press
+volatile bool sw1_pressed = false;
+volatile bool sw2_pressed = false;
+
+// variables
+int16_t sample_buffer[SAMPLE_BUFFER_SIZE];
+volatile int samples_read = 0;
+
+void sw1_task(void *pvParameters);
+void sw2_task(void *pvParameters);
+void led_task(void *pvParameters);
+void rgb_task(void *pvParameters);
+void buzzer_task(void *pvParameters);
+void light_sensor_task(void *pvParameters);
+void ths_task(void *pvParameters);
+void imu_task(void *pvParameters);
+
+
+// void display_task(void *pvParameters);
+// void mic_task(void *pvParameters);
+
+
+// // Callback function when PDM samples are ready
+// void on_mic_data_ready(){
+//     // Read the samples into the sample_buffer
+//     samples_read =pdm_microphone_read(sample_buffer, 256);
+
+// }
+
+
+void sw1_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        sw1_pressed = gpio_get(SW1_PIN);
+        vTaskDelay(10);
+    }
+}
+
+void led_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        gpio_put(RED_LED_PIN, sw1_pressed);
+        vTaskDelay(10);
+    }
+}
+
+void sw2_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        sw2_pressed = gpio_get(SW2_PIN);
+        vTaskDelay(10);
+    }
+}
+
+void rgb_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        rgb_led_write(20, 30, 255);
+        vTaskDelay(500);
+        rgb_led_write(255, 30, 10);
+        vTaskDelay(500);
+        rgb_led_write(50, 255, 10);
+        vTaskDelay(500);
+    }
+}
+
+void buzzer_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        if (sw2_pressed) {
+            buzzer_play_tone(440, 500);
+        }
+        vTaskDelay(10);
+    }
+}
+
+void light_sensor_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        uint16_t light = veml6030_read_light();
+        printf("Light level: %d\n", light);
+        vTaskDelay(1000);
+    }
+}
+
+void ths_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        float temp = hdc2021_read_temperature();
+        float humid = hdc2021_read_humidity();
+        printf("Temperature: %.2f°C, Humidity: %.2f%%\n", temp, humid);
+        vTaskDelay(1000);
+    }
+}
+
+
+void imu_task(void *pvParameters) {
+    (void)pvParameters;
+    
+    int16_t ax, ay, az, gx, gy, gz, t;
+
+    while (1)
+    {
+        if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) == 0) {
+            float temp_c = (float)t / 128.0f;
+            printf("Accel: X=%d, Y=%d, Z=%d | Gyro: X=%d, Y=%d, Z=%d | Temp: %.2f°C\n", ax, ay, az, gx, gy, gz, temp_c);
+
+        } else {
+            printf("Failed to read imu data\n");
+        }
+        vTaskDelay(pdMS_TO_TICKS(60));
+    }
+
+}
+
+// void display_task(void *pvParameters) {
+
+//     (void)pvParameters;
+
+//     while (1) {
+//         clear_display();
+//         // write_text("Hello");
+//         // draw_circle(1, 1, 20);
+//         // draw_line(0, 0, 127, 0);
+//         draw_square(30,10,20,20);
+//         draw_square(70,10,20,20);
+//         vTaskDelay(1000);
+//         clear_display();
+//         draw_line(30, 20, 50, 20);
+//         draw_line(70, 20, 90, 20);
+//         vTaskDelay(300);
+
+//     }
+// }
+
+// void mic_task(void *pvParameters) {
+//     (void)pvParameters;
+
+//     while (1) {
+//        if (samples_read !=0){
+
+//         // store and clear the samples read from the callback
+//         int sample_count = samples_read;
+//         samples_read = 0;
+
+//         // loop through any new collected samples
+//         for (int i = 0; i < sample_count; i++) {
+//             printf("%b\n", sample_buffer[i]);
+//         }
+//        }
+//     }
+// }
+
+
+
+int main() {
+    stdio_init_all();
+
+    // Initialize LED
+    init_red_led();
+
+    // Initialize SW1
+    init_sw1();
+
+    // Initialize SW2
+    init_sw2();
+
+    // Initialize RGB LED
+    init_rgb_led();
+
+    // Initialize Buzzer
+    init_buzzer();
+
+    // Initialize I2C
+    i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
+
+    //Initialize Light Sesnsor VEML6030
+    veml6030_init();
+
+    //Initialize Temp and Humidity Sesnsor HDC2021
+    hdc2021_init();
+
+
+
+    //Initialize IMU
+    if (ICM42670_init()) {
+        printf("ICM-42670P initialized successfully!\n");
+        ICM42670_startAccel(100, 16);
+        ICM42670_startGyro(100, 250);
+        ICM42670_enable_accel_gyro_ln_mode();
+    } else {
+        printf("Failed to initialize ICM-42670P.\n");
+    }
+
+    // //Initialize Buzzer
+    // init_display();
+
+    // init_pdm_microphone();
+    // start_pdm_microphone();
+    // pdm_microphone_set_callback(on_mic_data_ready);
+
+    // init_THS();
+
+    // Create tasks
+    // xTaskCreate(sw1_task, "SW1Task", 256, NULL, 1, NULL);
+    // xTaskCreate(sw2_task, "SW2Task", 256, NULL, 1, NULL);
+    // xTaskCreate(led_task, "LEDTask", 256, NULL, 2, NULL);
+    xTaskCreate(rgb_task, "RGBTask", 256, NULL, 1, NULL);
+    // xTaskCreate(buzzer_task, "BuzzerTask", 256, NULL, 4, NULL);
+    // xTaskCreate(light_sensor_task, "LightSensorTask", 256, NULL, 3, NULL);
+    // xTaskCreate(ths_task, "THSTask", 256, NULL, 1, NULL);
+    //xTaskCreate(imu_task, "IMUTask", 256, NULL, 1, NULL);
+
+
+    //  xTaskCreate(display_task, "DisplayTask", 256, NULL, 2, NULL);
+    // // xTaskCreate(mic_task, "MicTask", 256, NULL, 1, NULL);
+    
+    // Start the FreeRTOS scheduler
+    vTaskStartScheduler();
+
+    return 0;
+}
+
