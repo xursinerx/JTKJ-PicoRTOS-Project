@@ -1,0 +1,5 @@
+build
+!.vscode/*
+# OS-specific junk
+.DS_Store
+Thumbs.db
