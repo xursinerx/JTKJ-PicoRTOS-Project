@@ -127,6 +127,7 @@ void init_sw2(void);
 
 /* LEDs */
 void init_red_led(void);
+void toggle_red_led(void);
 
 void init_rgb_led(void);
 void rgb_led_write(uint8_t r, uint8_t g, uint8_t b);

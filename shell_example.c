@@ -20,6 +20,7 @@ volatile bool sw2_pressed = false;
 int16_t sample_buffer[SAMPLE_BUFFER_SIZE];
 volatile int samples_read = 0;
 
+void led_simple_task(void *pwParameters);
 void sw1_task(void *pvParameters);
 void sw2_task(void *pvParameters);
 void led_task(void *pvParameters);
@@ -42,23 +43,7 @@ void imu_task(void *pvParameters);
 // }
 
 
-void sw1_task(void *pvParameters) {
-    (void)pvParameters;
 
-    while (1) {
-        sw1_pressed = gpio_get(SW1_PIN);
-        vTaskDelay(10);
-    }
-}
-
-void led_task(void *pvParameters) {
-    (void)pvParameters;
-
-    while (1) {
-        gpio_put(RED_LED_PIN, sw1_pressed);
-        vTaskDelay(10);
-    }
-}
 
 void sw2_task(void *pvParameters) {
     (void)pvParameters;
@@ -172,49 +157,159 @@ void imu_task(void *pvParameters) {
 //     }
 // }
 
+//
+
+
+
+
+
+/**
+ * @brief FreeRTOS task for testing the red LED.
+ *
+ * This task toggles the state of the red LED once at startup,
+ * then enters an infinite loop where it simply delays by 1000 ticks
+ * on each iteration. The task yields to the scheduler, allowing other
+ * tasks to run, but does not continue toggling the LED after the first change.
+ *
+ * @param[in] pvParameters
+ *        Pointer to task parameters. Not used in this implementation,
+ *        should be passed as NULL when creating the task.
+ *
+ * @note This implementation is useful to verify task creation and scheduling,
+ *       but it does not produce a blinking LED.
+ * @see toggle_red_led()
+ * @see vTaskDelay()
+ */
+void led_simple_task(void *pvParameters) {
+    toggle_red_led();
+    while(1){
+        vTaskDelay(1000);
+    };
+}
+
+/**
+ * @brief FreeRTOS task for monitoring switch SW1 state.
+ *
+ * This task continuously reads the digital input connected to SW1
+ * and stores its state in the global variable @ref sw1_pressed.
+ *
+ * @param[in] pvParameters
+ *        Pointer to task parameters. Not used in this implementation,
+ *        should be passed as NULL when creating the task.
+ * @see gpio_get()
+ * @see vTaskDelay()
+ */
+void sw1_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        
+        sw1_pressed = gpio_get(SW1_PIN);
+        vTaskDelay(10);
+    }
+}
+
+/**
+ * @brief FreeRTOS task for controlling the red LED.
+ *
+ * This task continuously sets the red LED output level based on the
+ * global variable @ref sw1_pressed, which reflects the current state
+ * of switch SW1. If the switch is pressed, the LED is turned on;
+ * otherwise, it is turned off.
+ * @param[in] pvParameters
+ *        Pointer to task parameters. Not used in this implementation,
+ *        should be passed as NULL when creating the task.
+ *
+ * @warning This task depends on @ref sw1_task to update @ref sw1_pressed.
+ *          Ensure that @ref sw1_task is running concurrently; otherwise,
+ *          the LED state will not change.
+ *
+ * @see gpio_put()
+ * @see vTaskDelay()
+ */
+void led_task(void *pvParameters) {
+    (void)pvParameters;
+
+    while (1) {
+        gpio_put(RED_LED_PIN, sw1_pressed);
+        /*if (!sw1_pressed){
+            printf("Button pressed");
+        }*/
+        vTaskDelay(100);
+    }
+}
 
 
 int main() {
     stdio_init_all();
-
+    sleep_ms(2000); //Wait to see the output.
+    //printf("Start tests\n");
+    
     // Initialize LED
     init_red_led();
+    printf("Initializing red led\r\n");
+    
+    //Testing RED LED
+    // printf("Testing red led should be on\r\n");
+    // xTaskCreate(led_simple_task, "LEDSimpleTask", 64, NULL, 1, NULL);
 
-    // Initialize SW1
+
+    // Test SW1 
     init_sw1();
-
-    // Initialize SW2
+    printf("Initializing switch 1\r\n");
+   // xTaskCreate(sw1_task, "SW1Task", 64, NULL, 1, NULL);
+   // xTaskCreate(led_task, "LEDTask", 64, NULL, 2, NULL);
+ 
+    //Test SW2
     init_sw2();
+    printf("Initializing switch 2\r\n");
 
-    // Initialize RGB LED
+    //Test RGB
     init_rgb_led();
+    printf("Initializing RGB LED\r\n");
 
-    // Initialize Buzzer
-    init_buzzer();
+
+
+   // Initialize Buzzer
+   init_buzzer();
+   printf("Initializing the buzzer\n");
+
+   
+    while(true){
+        toggle_red_led();
+        printf("SW1 state: %d\n", gpio_get(SW1_PIN));
+        printf("SW2 state: %d\n", gpio_get(SW2_PIN));
+        //buzzer_play_tone(440, 500);
+        /*rgb_led_write(255,0,0);
+        sleep_ms(1000);
+        rgb_led_write(0,255,0);
+        sleep_ms(1000);
+        rgb_led_write(0,0,255);
+        sleep_ms(1000);*/
+    }
+
+ 
 
     // Initialize I2C
-    i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
+    // i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
 
     //Initialize Light Sesnsor VEML6030
-    veml6030_init();
+    // veml6030_init();
 
     //Initialize Temp and Humidity Sesnsor HDC2021
-    hdc2021_init();
+    // hdc2021_init();
 
 
 
     //Initialize IMU
-    if (ICM42670_init()) {
+    /*if (ICM42670_init()) {
         printf("ICM-42670P initialized successfully!\n");
         ICM42670_startAccel(100, 16);
         ICM42670_startGyro(100, 250);
         ICM42670_enable_accel_gyro_ln_mode();
     } else {
         printf("Failed to initialize ICM-42670P.\n");
-    }
-
-    // //Initialize Buzzer
-    // init_display();
+    }*/
 
     // init_pdm_microphone();
     // start_pdm_microphone();
@@ -223,10 +318,9 @@ int main() {
     // init_THS();
 
     // Create tasks
-    // xTaskCreate(sw1_task, "SW1Task", 256, NULL, 1, NULL);
+    
     // xTaskCreate(sw2_task, "SW2Task", 256, NULL, 1, NULL);
-    // xTaskCreate(led_task, "LEDTask", 256, NULL, 2, NULL);
-    xTaskCreate(rgb_task, "RGBTask", 256, NULL, 1, NULL);
+    // xTaskCreate(rgb_task, "RGBTask", 256, NULL, 1, NULL);
     // xTaskCreate(buzzer_task, "BuzzerTask", 256, NULL, 4, NULL);
     // xTaskCreate(light_sensor_task, "LightSensorTask", 256, NULL, 3, NULL);
     // xTaskCreate(ths_task, "THSTask", 256, NULL, 1, NULL);
@@ -237,7 +331,7 @@ int main() {
     // // xTaskCreate(mic_task, "MicTask", 256, NULL, 1, NULL);
     
     // Start the FreeRTOS scheduler
-    vTaskStartScheduler();
+    //vTaskStartScheduler();
 
     return 0;
 }

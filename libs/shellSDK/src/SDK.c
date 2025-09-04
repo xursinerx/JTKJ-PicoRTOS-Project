@@ -35,6 +35,11 @@ static ssd1306_t disp;
     gpio_set_dir(RED_LED_PIN, GPIO_OUT);
 }
 
+void toggle_red_led() {
+    bool curr = gpio_get(RED_LED_PIN);
+    gpio_put(RED_LED_PIN, !curr);
+}
+
 // RGB related function
  void init_rgb_led() {
     // Initialize the PWM slice for each RGB pin
@@ -58,7 +63,13 @@ static ssd1306_t disp;
     pwm_set_enabled(slice_num_b, true);
 }
 
+//Channel active to low level (common anode). We need to invert the value
  void rgb_led_write(uint8_t r, uint8_t g, uint8_t b) {
+
+    //Invert the values
+    r = 255-r;
+    g = 255-g;
+    b = 255-b;
     // Get the PWM slice numbers for each GPIO pin
     uint slice_num_r = pwm_gpio_to_slice_num(RGB_LED_R);
     uint slice_num_g = pwm_gpio_to_slice_num(RGB_LED_G);

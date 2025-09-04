@@ -49,6 +49,7 @@
         "ssd1306.h": "c",
         "tusb.h": "c",
         "binary_info.h": "c",
-        "sdk.h": "c"
+        "sdk.h": "c",
+        "printf.h": "c"
     }
 }
