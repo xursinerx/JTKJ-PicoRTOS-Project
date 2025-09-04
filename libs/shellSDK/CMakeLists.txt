@@ -9,7 +9,7 @@ file(GLOB OPENPDM_SRCS CONFIGURE_DEPENDS
 # Generate a library 
 add_library(shellSDK STATIC
   src/SDK.c
-  src/i2c.c
+  src/imu_icm42670.c
   src/ssd1306.c
   src/pdm/pdm_microphone.c
   ${OPENPDM_SRCS}

@@ -5,7 +5,7 @@
 #include "hardware/irq.h"
 #include "hardware/pwm.h"
 #include <shellSDK/ssd1306.h>
-#include <shellSDK/i2c.h>
+#include <shellSDK/imu_icm42670.h>
 #include <shellSDK/pdm_microphone.h>
 
 

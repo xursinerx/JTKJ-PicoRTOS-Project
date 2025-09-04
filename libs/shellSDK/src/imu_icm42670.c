@@ -9,7 +9,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-#include <shellSDK/i2c.h>
+#include <shellSDK/imu_icm42670.h>
 static SemaphoreHandle_t i2c_mutex = NULL;
 
 void i2c_init_interface() {
