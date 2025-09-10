@@ -286,8 +286,12 @@ int main() {
     //printf("Initializing the temp/humidity sensor\n");
 
     //Initialize the display
-    init_display();
-    printf("Initializating display\n");
+    //init_display();
+    //printf("Initializating display\n");
+
+    //Initialize the microphone
+    init_pdm_microphone();
+    printf("Initializing the microphone");
 
     while(true){
         toggle_red_led();
@@ -306,14 +310,44 @@ int main() {
         //float temp = hdc2021_read_temperature();
         //float humid = hdc2021_read_humidity();
         //printf("Temperature: %.2f°C, Humidity: %.2f%%\n", temp, humid);
-        clear_display();
-        write_text("Hello");
-        draw_circle(25, 25, 20, true);
+        // clear_display();
+        // write_text("Hello");
+        // draw_circle(25, 25, 20, true);
         //draw_line(0, 0, 127, 0);
         //draw_square(30,10,20,20, true);
-        draw_square(70,10,20,20, false);
-        write_text_xy(20,40, "Bye");
-        sleep_ms(5000);
+        // draw_square(70,10,20,20, false);
+        // write_text_xy(20,40, "Bye");
+        init_microphone_sampling();
+        const uint32_t total_samples = 16000 * 5;//Store 5 seconds at 16Khz. 
+        uint32_t sent_samples = 0;
+        int16_t pcm[16000*5]; //Store 5 seconds at 16Khz. 
+        while (!stdio_usb_connected()) 
+            sleep_ms(50);
+        puts("READY\n");
+        while (sent_samples < total_samples) {
+            int n = get_microphone_samples(pcm, 256);
+            if (n > 0) {
+                const uint8_t *bytes = (const uint8_t *)pcm;
+                size_t len = (size_t)n * sizeof(int16_t);
+                for (size_t i = 0; i < len; ++i) {
+                    putchar_raw(bytes[i]);    // send raw byte (not ASCII)
+                }
+                sent_samples += (uint32_t)n;
+                } else {
+                    // no new buffer yet; avoid busy-spinning too hard
+                    sleep_ms(1);
+                }
+        } 
+        /*RECEIVE IN SERIAL USB (CDC) using the following code: 
+        # put the port in raw mode (important: no line processing)
+        stty -F /dev/ttyACM0 raw -echo -echoe -echok
+        # read until READY
+        grep -m1 -a "READY" < /dev/ttyACM0 >/dev/null
+
+        # read exactly 5 s of audio: 16000 samples/s * 2 bytes/sample * 5s = 160000 bytes
+        head -c 160000 /dev/ttyACM0 > mic_5s_s16le_16k.raw*/
+
+         sleep_ms(5000);
     }
 
  

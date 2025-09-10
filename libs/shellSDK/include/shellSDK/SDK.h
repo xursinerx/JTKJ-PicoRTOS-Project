@@ -173,10 +173,10 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop);
 
 /* PDM microphone */
 int  init_pdm_microphone(void);
-int  start_pdm_microphone(void);
-void stop_pdm_microphone(void);
+int  init_microphone_sampling(void);
+void end_microphone_sampling(void);
 void pdm_microphone_set_callback(pdm_samples_ready_handler_t handler);
-int  pdm_microphone_read_data(int16_t *buffer, size_t samples);
+int  get_microphone_samples(int16_t *buffer, size_t samples);
 
 /* Display helpers (SSD1306) */
 void init_display(void);

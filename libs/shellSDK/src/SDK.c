@@ -216,8 +216,13 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop) {
     return bytes_read == (int)len;
 }
 
+/* =========================
+ *  MICROPHONE
+ * ========================= */
 
 // Microphone related functions
+// Sample rate: 16Khz
+// Buffer size: 256 samples.
  int init_pdm_microphone() {
     const struct pdm_microphone_config config = {
     // GPIO pin for the PDM DAT signal
@@ -243,11 +248,11 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop) {
    
 }
 
- int start_pdm_microphone(){
+ int init_microphone_sampling(){
     return pdm_microphone_start();
 }
 
- void stop_pdm_microphone(){
+ void end_microphone_sampling(){
     pdm_microphone_stop();
 }
 
@@ -255,7 +260,7 @@ void pdm_microphone_set_callback(pdm_samples_ready_handler_t handler) {
     pdm_microphone_set_samples_ready_handler(handler);
 }
 
-int pdm_microphone_read_data(int16_t* buffer, size_t samples) {
+int get_microphone_samples(int16_t* buffer, size_t samples) {
     return pdm_microphone_read(buffer,samples);
 }
 
