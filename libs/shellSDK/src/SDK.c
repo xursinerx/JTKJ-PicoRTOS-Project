@@ -1,3 +1,30 @@
+/*
+
+Version 0.8
+
+MIT License
+
+Copyright (c) 2025 Raisul Islam, Iván Sánchez Milara
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #include <shellSDK/SDK.h>
 // #include <icm42670.h>
 
@@ -32,6 +59,8 @@
 
 // By default these devices  are on bus address 0x68
 static int addr = 0x68;
+
+
 static ssd1306_t disp;
 
 
@@ -231,24 +260,63 @@ int pdm_microphone_read_data(int16_t* buffer, size_t samples) {
 }
 
 
-
+/* =========================
+ *  DISPLAY SSD1306
+ * ========================= */
 
 // Display-related functions
  void init_display() {
     // Initialize the SSD1306 display with external VCC
     disp.external_vcc = false;
-    ssd1306_init(&disp, 128, 64, 0x3C, i2c_default);
+    ssd1306_init(&disp, 128, 64, SSD1306_I2C_ADDRESS, i2c_default);
+
+    //power it on
+    ssd1306_poweron(&disp);
 
     // Clear the display
     ssd1306_clear(&disp);
 }
 
- void write_text(const char *word) {
-    // Clear the display
-    ssd1306_clear(&disp);
+/**
+ * @brief Draw a text string starting at (x0, y0).
+ *
+ * Writes the given string into the SSD1306 off-screen buffer at the
+ * specified position, then updates the display.
+ *
+ * Coordinate system:
+ *  - Origin (0,0) is top-left; X→right, Y→down.
+ *
+ * Preconditions:
+ *  - `disp` must be initialized via ssd1306_init().
+ *
+ * @param x0   Start X in pixels (int16_t). Values < 0 are clamped to 0.
+ * @param y0   Start Y in pixels (int16_t). Values < 0 are clamped to 0.
+ * @param text Null-terminated C string to render.
+ *
+ * @note This uses font scale = 1 
+ */
+void write_text_xy(int16_t x0, int16_t y0, const char *text) {
+    if (!text) return;
+
+    // Clamp negatives (library expects unsigned)
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+
+    const uint8_t scale = 1; //Default font scale is 1
+
+    ssd1306_draw_string(&disp, (uint32_t)x0, (uint32_t)y0, scale, text);
+    ssd1306_show(&disp);
+
+    // Delay for 800 milliseconds
+    sleep_ms(800);
+}
+
+void write_text(const char *text) {
+
+    if (!text)return;
 
     // Draw the text at the specified position with a font size of 2
-    ssd1306_draw_string(&disp, 8, 24, 2, word);
+    ssd1306_draw_string(&disp, 8, 24, 2, text);
 
     // Update the display
     ssd1306_show(&disp);
@@ -257,36 +325,124 @@ int pdm_microphone_read_data(int16_t* buffer, size_t samples) {
     sleep_ms(800);
 }
 
- void draw_circle(int16_t x0, int16_t y0, int16_t r) {
-    // Draw a circle using the Bresenham algorithm
-    int16_t x = r - 1;
-    int16_t y = 0;
-    int16_t ddF_x = 1;
-    int16_t ddF_y = -2 * x;
-    int16_t ddF_x2 = 0;
-    int16_t ddF_y2 = -2 * x;
-
-    while (x >= y) {
-        // Draw the eight symmetrical points of the circle
-        ssd1306_draw_pixel(&disp, x0 + x, y0 + y);
-        ssd1306_draw_pixel(&disp, x0 + y, y0 + x);
-        ssd1306_draw_pixel(&disp, x0 - y, y0 + x);
-        ssd1306_draw_pixel(&disp, x0 - x, y0 + y);
-        ssd1306_draw_pixel(&disp, x0 + x, y0 - y);
-        ssd1306_draw_pixel(&disp, x0 + y, y0 - x);
-        ssd1306_draw_pixel(&disp, x0 - y, y0 - x);
-        ssd1306_draw_pixel(&disp, x0 - x, y0 - y);
-
-        // Update the error terms and increment/decrement x and y accordingly
-        if (ddF_y > 0) {
-            x--;
-            ddF_x2 += 2;
-            ddF_y += 2;
-        }
-        ddF_y += 2;
-        y++;
-        ddF_x += 2;
+/**
+ * @brief Put a pixel with bounds checking (no immediate display update).
+ *
+ * Writes a single pixel into the SSD1306 off-screen buffer only if the
+ * coordinates are inside the display area. Out-of-bounds are ignored.
+ *
+ * Coordinate system: origin (0,0) = top-left; X→right, Y→down.
+ *
+ * Preconditions:
+ *  - `disp` must be initialized via ssd1306_init().
+ *
+ * @param x X coordinate in pixels (0 .. disp.width-1). Negative values are ignored.
+ * @param y Y coordinate in pixels (0 .. disp.height-1). Negative values are ignored.
+ *
+ * @note This does NOT call ssd1306_show(). Batch draws, then call ssd1306_show(&disp).
+ */
+static inline void putp(int16_t x, int16_t y) {
+    if (x >= 0 && y >= 0 &&
+        x < (int16_t)disp.width && y < (int16_t)disp.height) {
+        ssd1306_draw_pixel(&disp, (uint32_t)x, (uint32_t)y);
     }
+}
+
+/**
+ * @brief Draw a clipped horizontal span into the off-screen buffer.
+ *
+ * Draws solid pixels from x1 to x2 inclusive on row y. The span is clipped
+ * to display bounds; fully off-screen spans are skipped.
+ *
+ * Preconditions:
+ *  - `disp` must be initialized.
+ *
+ * @param x1 Left end (can be < 0; will be clipped).
+ * @param x2 Right end (can be >= width; will be clipped).
+ * @param y  Row index (0 .. disp.height-1). Outside rows are ignored.
+ *
+ * @note No ssd1306_show() here; meant for filled-shape routines.
+ */
+static inline void hspan(int16_t x1, int16_t x2, int16_t y) {
+    if (y < 0 || y >= (int16_t)disp.height) return;
+    if (x1 > x2) { int16_t t = x1; x1 = x2; x2 = t; }
+    if (x2 < 0 || x1 >= (int16_t)disp.width) return;
+    if (x1 < 0) x1 = 0;
+    if (x2 >= (int16_t)disp.width) x2 = (int16_t)disp.width - 1;
+
+    for (int16_t x = x1; x <= x2; ++x)
+        ssd1306_draw_pixel(&disp, (uint32_t)x, (uint32_t)y);
+}
+
+/**
+ * @brief Draw a circle centered at (x0, y0) with radius r.
+ *
+ * Renders an outline or filled circle using the midpoint (Bresenham) algorithm.
+ * Pixels are written into the off-screen buffer; out-of-bounds pixels are clipped.
+ *
+ * Coordinate system: origin (0,0) = top-left; X→right, Y→down.
+ *
+ * Preconditions:
+ *  - `disp` must be initialized via ssd1306_init().
+ *  - r >= 0. For r == 0, draws a single pixel at (x0, y0).
+ *
+ * @param x0   Center X (can be off-screen; clipped).
+ * @param y0   Center Y (can be off-screen; clipped).
+ * @param r    Radius in pixels (non-negative).
+ * @param fill If true, draws a filled disk; otherwise, only the outline.
+ *
+ * @post Calls ssd1306_show(&disp) once at the end to update the panel.
+ *       Remove that call if you prefer to batch multiple drawings.
+ *
+ * @complexity O(r)
+ */
+void draw_circle(int16_t x0, int16_t y0, int16_t r, bool fill) {
+    // Draw a circle using the Bresenham algorithm
+    if (r < 0) 
+        return;
+    if (r == 0) { 
+        putp(x0, y0); 
+        ssd1306_show(&disp); 
+        return; 
+    }
+
+    // Midpoint circle algorithm
+    int16_t f = 1 - r;
+    int16_t ddF_x = 1;
+    int16_t ddF_y = -2 * r;
+    int16_t x = 0;
+    int16_t y = r;
+
+    if (fill) {
+        hspan((int16_t)(x0 - r), (int16_t)(x0 + r), y0);  // center row
+    } else {
+        putp(x0, (int16_t)(y0 + r));
+        putp(x0, (int16_t)(y0 - r));
+        putp((int16_t)(x0 + r), y0);
+        putp((int16_t)(x0 - r), y0);
+    }
+
+    while (x < y) {
+        if (f >= 0) { y--; ddF_y += 2; f += ddF_y; }
+        x++; ddF_x += 2; f += ddF_x;
+
+        if (fill) {
+            hspan((int16_t)(x0 - x), (int16_t)(x0 + x), (int16_t)(y0 + y));
+            hspan((int16_t)(x0 - x), (int16_t)(x0 + x), (int16_t)(y0 - y));
+            hspan((int16_t)(x0 - y), (int16_t)(x0 + y), (int16_t)(y0 + x));
+            hspan((int16_t)(x0 - y), (int16_t)(x0 + y), (int16_t)(y0 - x));
+        } else {
+            putp((int16_t)(x0 + x), (int16_t)(y0 + y));
+            putp((int16_t)(x0 - x), (int16_t)(y0 + y));
+            putp((int16_t)(x0 + x), (int16_t)(y0 - y));
+            putp((int16_t)(x0 - x), (int16_t)(y0 - y));
+            putp((int16_t)(x0 + y), (int16_t)(y0 + x));
+            putp((int16_t)(x0 - y), (int16_t)(y0 + x));
+            putp((int16_t)(x0 + y), (int16_t)(y0 - x));
+            putp((int16_t)(x0 - y), (int16_t)(y0 - x));
+        }
+    }
+    ssd1306_show(&disp);  // remove if batching multiple draws
 }
 
  void draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
@@ -297,17 +453,26 @@ int pdm_microphone_read_data(int16_t* buffer, size_t samples) {
     ssd1306_show(&disp);
 }
 
- void draw_square(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+ void draw_square(uint32_t x, uint32_t y, uint32_t w, uint32_t h, bool fill) {
     // Draw a square at the specified position with the given width and height
-    ssd1306_draw_square(&disp, x, y, w, h);
+    if (fill)
+        ssd1306_draw_square(&disp, x, y, w, h);
+    else
+        ssd1306_draw_empty_square(&disp, x, y, w, h);
 
     // Update the display
     ssd1306_show(&disp);
 }
 
- void clear_display() {
+void clear_display() {
     // Clear the display
     ssd1306_clear(&disp);
+    // Update the display
+    ssd1306_show(&disp);
+}
+
+void display_stop() {
+    ssd1306_poweroff(&disp);
 }
 
 
@@ -378,7 +543,7 @@ uint16_t _veml6030_read_register(uint8_t reg) {
     return ((uint16_t)data[0]) |((uint16_t) data[1]<<8);
 }
 
-void stop_veml6030(){
+void veml6030_stop(){
     uint8_t config[3] = {
         VEML6030_CONFIG_REG,  // Configuration register
         0x00,                 // High byte: Gain 1/8 (00), reserved bits
@@ -504,6 +669,20 @@ float hdc2021_read_humidity() {
     
     uint16_t raw = ((uint16_t) data[1] << 8) | data[0];
     return (raw * 100.0f / 65536.0f);
+}
+
+void hdc2021_stop() {
+    uint8_t cfg = read_hdc2021_register(HDC2021_CONFIG);  // 0x0E
+    cfg &= 0x8F;  // clear AMM[2:0] (bits 6:4) -> 000 = AMM disabled
+    write_register(HDC2021_CONFIG, cfg);
+    // Make sure we don't accidentally retrigger
+    uint8_t meas = read_hdc2021_register(HDC2021_MEASUREMENT_CONFIG); // 0x0F
+    meas &= (uint8_t)~0x01; // clear MEAS_TRIG (bit 0)
+    write_register(HDC2021_MEASUREMENT_CONFIG, meas);
+    //turn heater & DRDY pin off to minimize current
+    cfg &= ~(uint8_t)(1<<3); // HEAT_EN=0
+    cfg &= ~(uint8_t)(1<<2); // DRDY/INT_EN=0 (pin Hi-Z)
+
 }
 
 

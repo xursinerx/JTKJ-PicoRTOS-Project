@@ -1,9 +1,28 @@
 /*
- * SDK V1.0.1
- * Copyright (C) 2024.  All Rights Reserved.
- *
- * MIT-style license text...
- */
+Version 0.8
+
+MIT License
+
+Copyright (c) 2025 Raisul Islam, Iván Sánchez Milara
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 #ifndef SDK_H
 #define SDK_H
 
@@ -63,6 +82,12 @@
 #define HDC2021_TEMP_THR_H                      0x14
 #define HDC2021_HUMID_THR_L                     0x15
 #define HDC2021_HUMID_THR_H                     0x16
+
+/* =========================
+ *  SSD1306
+ * ========================= */
+
+ #define SSD1306_I2C_ADDRESS                    0x3C
 
 /* =========================
  *  ICM42670
@@ -155,17 +180,20 @@ int  pdm_microphone_read_data(int16_t *buffer, size_t samples);
 
 /* Display helpers (SSD1306) */
 void init_display(void);
-void write_text(const char *word);
-void draw_circle(int16_t x0, int16_t y0, int16_t r);
+void write_text(const char *text);
+void write_text_xy(int16_t x0, int16_t y0, const char *text);
+void set_text_cursor (int16_t x0, int16_t y0);
+void draw_circle(int16_t x0, int16_t y0, int16_t r, bool fill);
 void draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1);
-void draw_square(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+void draw_square(uint32_t x, uint32_t y, uint32_t w, uint32_t h, bool fill);
 void clear_display(void);
+void display_stop(void);
 
 /* VEML6030 */
 void     veml6030_init(void);
 uint32_t veml6030_read_light(void);
 uint16_t _veml6030_read_register(uint8_t reg);
-void stop_veml6030(void);
+void veml6030_stop(void);
 
 /* HDC2021 (public-facing subset;  */
 void  hdc2021_set_low_temp_threshold(float temp);
@@ -175,6 +203,7 @@ void  hdc2021_set_low_humidity_threshold(float humid);
 float hdc2021_read_temperature(void);
 float hdc2021_read_humidity(void);
 void hdc2021_init(void);
+void hdc2021_stop(void);
 
 /* ICM42670 IMU (public-facing) */
 int ICM42670_init(void);

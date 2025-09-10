@@ -282,8 +282,12 @@ int main() {
     //printf("Initializing the light sensor\n");
 
     //Initialize the Temp and Humidity Sensor
-    hdc2021_init();
-    printf("Initializing the temp/humidity sensor\n");
+    //hdc2021_init();
+    //printf("Initializing the temp/humidity sensor\n");
+
+    //Initialize the display
+    init_display();
+    printf("Initializating display\n");
 
     while(true){
         toggle_red_led();
@@ -299,10 +303,17 @@ int main() {
         //printf("Register: 0x%04X\n",(unsigned int)reg);
         //uint32_t light = veml6030_read_light();
         //printf("Light level: %u\n", light);
-        float temp = hdc2021_read_temperature();
-        float humid = hdc2021_read_humidity();
-        printf("Temperature: %.2f°C, Humidity: %.2f%%\n", temp, humid);
-        sleep_ms(2000);
+        //float temp = hdc2021_read_temperature();
+        //float humid = hdc2021_read_humidity();
+        //printf("Temperature: %.2f°C, Humidity: %.2f%%\n", temp, humid);
+        clear_display();
+        write_text("Hello");
+        draw_circle(25, 25, 20, true);
+        //draw_line(0, 0, 127, 0);
+        //draw_square(30,10,20,20, true);
+        draw_square(70,10,20,20, false);
+        write_text_xy(20,40, "Bye");
+        sleep_ms(5000);
     }
 
  

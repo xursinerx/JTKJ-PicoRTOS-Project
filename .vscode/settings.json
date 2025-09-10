@@ -52,6 +52,8 @@
         "sdk.h": "c",
         "printf.h": "c",
         "padsbank0.h": "c",
-        "gpio.h": "c"
+        "gpio.h": "c",
+        "compare": "c",
+        "cstdint": "c"
     }
 }
