@@ -378,12 +378,26 @@ uint16_t _veml6030_read_register(uint8_t reg) {
     return ((uint16_t)data[0]) |((uint16_t) data[1]<<8);
 }
 
+void stop_veml6030(){
+    uint8_t config[3] = {
+        VEML6030_CONFIG_REG,  // Configuration register
+        0x00,                 // High byte: Gain 1/8 (00), reserved bits
+        0x11                  // Low byte: 100ms integration time (010 in bits 6-8), power on (bit 0 = 0). Power off (last bit to 1)
+    };
+    
+    // Write configuration to sensor
+    i2c_write_blocking(i2c_default, VEML6030_I2C_ADDR, config, sizeof(config), false);
+    sleep_ms(10);
+}
+
 
 
 
 // Temperature & Humidity sensor related function
+// https://www.ti.com/lit/ds/symlink/hdc2021.pdf?ts=1757522824481&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FHDC2021
+// https://www.ti.com/lit/ug/snau250/snau250.pdf?ts=1757438909914
 
- static int8_t read_register(uint8_t reg) {
+ static int8_t read_hdc2021_register(uint8_t reg) {
     uint8_t data;
     i2c_write(HDC2021_I2C_ADDRESS, &reg, 1, true);
     i2c_read(HDC2021_I2C_ADDRESS, &data, 1, false);
@@ -396,34 +410,34 @@ uint16_t _veml6030_read_register(uint8_t reg) {
 }
 
  static void hdc2021_reset() {
-    uint8_t configContents = read_register(HDC2021_CONFIG);
+    uint8_t configContents = read_hdc2021_register(HDC2021_CONFIG);
     write_register(HDC2021_CONFIG, configContents | 0x80);
     sleep_ms(50);
 }
 
 static void hdc2021_setMeasurementMode() {
-    uint8_t configContents = read_register(HDC2021_MEASUREMENT_CONFIG);
+    uint8_t configContents = read_hdc2021_register(HDC2021_MEASUREMENT_CONFIG);
     write_register(HDC2021_MEASUREMENT_CONFIG, configContents & 0xF9);
 }
 
 static void hdc2021_setRate() {
-    uint8_t configContents = read_register(HDC2021_CONFIG);
+    uint8_t configContents = read_hdc2021_register(HDC2021_CONFIG);
     configContents = (configContents & 0x8F) | 0x50; // Set 1 measurement/second
     write_register(HDC2021_CONFIG, configContents);
 }
 
 static void hdc2021_setTempRes() {
-    uint8_t configContents = read_register(HDC2021_MEASUREMENT_CONFIG);
+    uint8_t configContents = read_hdc2021_register(HDC2021_MEASUREMENT_CONFIG);
     write_register(HDC2021_MEASUREMENT_CONFIG, configContents & 0x3F); // 14-bit
 }
 
 static void hdc2021_setHumidityRes() {
-    uint8_t configContents = read_register(HDC2021_MEASUREMENT_CONFIG);
+    uint8_t configContents = read_hdc2021_register(HDC2021_MEASUREMENT_CONFIG);
     write_register(HDC2021_MEASUREMENT_CONFIG, configContents & 0xCF); // 14-bit
 }
 
  static void hdc2021_triggerMeasurement() {
-    uint8_t configContents = read_register(HDC2021_MEASUREMENT_CONFIG);
+    uint8_t configContents = read_hdc2021_register(HDC2021_MEASUREMENT_CONFIG);
     write_register(HDC2021_MEASUREMENT_CONFIG, configContents | 0x01);
 }
 
@@ -450,7 +464,12 @@ void hdc2021_set_low_humidity_threshold(float humid) {
     uint8_t humid_thresh = (uint8_t)(humid * 2.56f);
     write_register(HDC2021_HUMID_THR_L, humid_thresh);
 }
-
+// By default it sets following modes: 
+// Measurement methods: Temp + Measurement
+// Sampling rate: 1 Hz
+// Temperature resolution: 14 bits
+// Humidity resolution: 14 bits
+// It triggers continous measurements. 
  void hdc2021_init() {
     hdc2021_reset();
     hdc2021_set_high_temp_threshold(50);
@@ -464,17 +483,18 @@ void hdc2021_set_low_humidity_threshold(float humid) {
     hdc2021_triggerMeasurement();
 }
 
+// Note that sampling rate is 1Hz
 float hdc2021_read_temperature() {
     uint8_t reg = HDC2021_TEMP_LOW;
     uint8_t data[2];
     
     i2c_write(HDC2021_I2C_ADDRESS, &reg, 1, true);
     i2c_read(HDC2021_I2C_ADDRESS, data, 2, false);
-    
-    uint16_t raw = (data[1] << 8) | data[0];
+    uint16_t raw = ((uint16_t) data[1] << 8) | data[0];
     return (raw * 165.0f / 65536.0f) - 40.0f;
 }
 
+//Note that sampling rate is 1 HX
 float hdc2021_read_humidity() {
     uint8_t reg = HDC2021_HUMIDITY_LOW;
     uint8_t data[2];
@@ -482,7 +502,7 @@ float hdc2021_read_humidity() {
     i2c_write(HDC2021_I2C_ADDRESS, &reg, 1, true);
     i2c_read(HDC2021_I2C_ADDRESS, data, 2, false);
     
-    uint16_t raw = (data[1] << 8) | data[0];
+    uint16_t raw = ((uint16_t) data[1] << 8) | data[0];
     return (raw * 100.0f / 65536.0f);
 }
 

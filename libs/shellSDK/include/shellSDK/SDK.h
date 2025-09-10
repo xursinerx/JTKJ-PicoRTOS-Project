@@ -165,6 +165,7 @@ void clear_display(void);
 void     veml6030_init(void);
 uint32_t veml6030_read_light(void);
 uint16_t _veml6030_read_register(uint8_t reg);
+void stop_veml6030(void);
 
 /* HDC2021 (public-facing subset;  */
 void  hdc2021_set_low_temp_threshold(float temp);
