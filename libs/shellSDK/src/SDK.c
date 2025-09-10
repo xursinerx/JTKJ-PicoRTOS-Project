@@ -7,25 +7,51 @@
 #include <shellSDK/ssd1306.h>
 #include <shellSDK/imu_icm42670.h>
 #include <shellSDK/pdm_microphone.h>
+#include <stdio.h>
+#include <math.h>
 
+
+
+
+//This trick tries to solve the leakage problem in rp2350 (Errata 9)
+#if defined(PICO_RP2350)
+    #include "hardware/gpio.h"
+
+    static inline bool gpio_get_safe(uint pin) {
+        hw_set_bits(&pads_bank0_hw->io[pin], PADS_BANK0_GPIO0_IE_BITS); // enable input buffer
+        __asm volatile("nop; nop; nop; nop;"); // short settle
+        bool v = gpio_get(pin);// read
+        hw_clear_bits(&pads_bank0_hw->io[pin], PADS_BANK0_GPIO0_IE_BITS); // disable input buffer again
+        //printf("Reading 2350");
+        return v;
+    }
+
+    // Redirect any later uses of gpio_get(...) to our safe version on RP2350
+    #define gpio_get(pin) gpio_get_safe((pin))
+#endif
 
 // By default these devices  are on bus address 0x68
 static int addr = 0x68;
 static ssd1306_t disp;
+
+
+void init_shell(){
+    //Turn off the RGB
+    stop_rgb_led();
+}
 
 // Button related function
  void init_sw1() {
     // Initialize the button pin as an input with a pull-up resistor
     gpio_init(SW1_PIN);
     gpio_set_dir(SW1_PIN, GPIO_IN);
-    gpio_pull_up(SW1_PIN);
+
 }
 
  void init_sw2() {
     // Initialize the button pin as an input with a pull-up resistor
     gpio_init(SW2_PIN);
     gpio_set_dir(SW2_PIN, GPIO_IN);
-    gpio_pull_up(SW2_PIN);
 }
 
 // LED related function
@@ -61,6 +87,27 @@ void toggle_red_led() {
     pwm_set_enabled(slice_num_r, true);
     pwm_set_enabled(slice_num_g, true);
     pwm_set_enabled(slice_num_b, true);
+}
+
+//RGB off
+void stop_rgb_led(){
+     // Stop PWM on those slices (optional)
+    pwm_set_enabled(pwm_gpio_to_slice_num(RGB_LED_R), false);
+    pwm_set_enabled(pwm_gpio_to_slice_num(RGB_LED_G), false);
+    pwm_set_enabled(pwm_gpio_to_slice_num(RGB_LED_B), false);
+
+    // Return pins to GPIO input (Hi-Z)
+    gpio_set_function(RGB_LED_R, GPIO_FUNC_SIO);
+    gpio_set_dir(RGB_LED_R, GPIO_IN);
+    gpio_disable_pulls(RGB_LED_R);
+
+    gpio_set_function(RGB_LED_G, GPIO_FUNC_SIO);
+    gpio_set_dir(RGB_LED_G, GPIO_IN);
+    gpio_disable_pulls(RGB_LED_G);
+
+    gpio_set_function(RGB_LED_B, GPIO_FUNC_SIO);
+    gpio_set_dir(RGB_LED_B, GPIO_IN);
+    gpio_disable_pulls(RGB_LED_B);
 }
 
 //Channel active to low level (common anode). We need to invert the value
@@ -265,29 +312,70 @@ int pdm_microphone_read_data(int16_t* buffer, size_t samples) {
 
 
 // Light sensor related function
+// Useful info at: https://learn.sparkfun.com/tutorials/qwiic-ambient-light-sensor-veml6030-hookup-guide/all#arduino-library
+// Programming application: https://www.vishay.com/docs/84367/designingveml6030.pdf
+// Datasheet: https://www.vishay.com/docs/84366/veml6030.pdf
 void veml6030_init() {
     // Configure sensor settings (100ms integration time, gain 1/8, power on)
+    //Bit 12:11 = 10 (gain1/8)
+    //Bit 9:6 = 0000 (Integration time 100ms)
+    //Bit 5:4 Persisentec protect number setting (00 -> 1) 
+    //Bit 1 =0 INT disable
+    //Bit 0 = 0 Power on
+    // 0b0001 0000 0000 0000 -> =0x1000
+
     uint8_t config[3] = {
         VEML6030_CONFIG_REG,  // Configuration register
         0x00,                 // High byte: Gain 1/8 (00), reserved bits
-        0x80                  // Low byte: 100ms integration time (010 in bits 6-8), power on (bit 0 = 0)
+        0x10                  // Low byte: 100ms integration time (010 in bits 6-8), power on (bit 0 = 0)
     };
     
     // Write configuration to sensor
     i2c_write_blocking(i2c_default, VEML6030_I2C_ADDR, config, sizeof(config), false);
+    sleep_ms(10);
 }
 
 // Read light level from VEML6030
-uint16_t veml6030_read_light() {
+// Ligt in LUX
+// Note: sampling time should be > IT -> in this case it has been 100ms by defintion. 
+uint32_t veml6030_read_light() {
     uint8_t reg = VEML6030_ALS_REG;
-    uint8_t data[2] = {0};
+    uint8_t data[2] = {0,0};
 
     // Select ALS output register
     i2c_write_blocking(i2c_default, VEML6030_I2C_ADDR, &reg, 1, true);
     // Read two bytes (MSB first)
     i2c_read_blocking(i2c_default, VEML6030_I2C_ADDR, data, sizeof(data), false);
+    //data [0] contains the LSB and data[1] the MSB
+    uint16_t lightbits = ((uint16_t)data[0]) |((uint16_t) data[1]<<8);
+    // See table page 5 https://www.vishay.com/docs/84367/designingveml6030.pdf
+    // With other values of gain (1/8) and integration time (100ms) 
+    uint32_t luxVal_uncorrected = lightbits *  0.5376;
+    //NOT SURE IF THIS IS CORRECT JUST CHECK. 
+    if (luxVal_uncorrected>1000){
+        // Polynomial is pulled from pg 10 of the datasheet. 
+        // See https://github.com/sparkfun/SparkFun_Ambient_Light_Sensor_Arduino_Library/blob/efde0817bd6857863067bd1653a2cfafe6c68732/src/SparkFun_VEML6030_Ambient_Light_Sensor.cpp#L409
+        uint32_t luxVal = (.00000000000060135 * (pow(luxVal_uncorrected, 4))) - 
+                            (.0000000093924 * (pow(luxVal_uncorrected, 3))) + 
+                            (.000081488 * (pow(luxVal_uncorrected,2))) + 
+                            (1.0023 * luxVal_uncorrected);
+        return luxVal;
+    }
+    return  luxVal_uncorrected;
+}
 
-    return (data[0] << 8) | data[1];
+
+
+//This method might be utility method in the future.
+uint16_t _veml6030_read_register(uint8_t reg) {
+    uint8_t data[2] = {0,0};
+
+    // Select ALS output register
+    i2c_write_blocking(i2c_default, VEML6030_I2C_ADDR, &reg, 1, true);
+    // Read two bytes (MSB first)
+    i2c_read_blocking(i2c_default, VEML6030_I2C_ADDR, data, sizeof(data), false);
+    //data [0] contains the LSB and data[1] the MSB
+    return ((uint16_t)data[0]) |((uint16_t) data[1]<<8);
 }
 
 

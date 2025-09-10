@@ -121,6 +121,8 @@
  *  Public function prototypes
  * ========================= */
 
+void init_shell(void);
+
 /* Switches */
 void init_sw1(void);
 void init_sw2(void);
@@ -131,6 +133,7 @@ void toggle_red_led(void);
 
 void init_rgb_led(void);
 void rgb_led_write(uint8_t r, uint8_t g, uint8_t b);
+void stop_rgb_led();
 
 /* Buzzer */
 void init_buzzer(void);
@@ -160,7 +163,8 @@ void clear_display(void);
 
 /* VEML6030 */
 void     veml6030_init(void);
-uint16_t veml6030_read_light(void);
+uint32_t veml6030_read_light(void);
+uint16_t _veml6030_read_register(uint8_t reg);
 
 /* HDC2021 (public-facing subset;  */
 void  hdc2021_set_low_temp_threshold(float temp);

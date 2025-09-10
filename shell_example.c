@@ -243,7 +243,8 @@ void led_task(void *pvParameters) {
 int main() {
     stdio_init_all();
     sleep_ms(2000); //Wait to see the output.
-    //printf("Start tests\n");
+    init_shell();
+    printf("Start tests\n");
     
     // Initialize LED
     init_red_led();
@@ -251,50 +252,57 @@ int main() {
     
     //Testing RED LED
     // printf("Testing red led should be on\r\n");
-    // xTaskCreate(led_simple_task, "LEDSimpleTask", 64, NULL, 1, NULL);
+   
 
 
     // Test SW1 
-    init_sw1();
-    printf("Initializing switch 1\r\n");
-   // xTaskCreate(sw1_task, "SW1Task", 64, NULL, 1, NULL);
-   // xTaskCreate(led_task, "LEDTask", 64, NULL, 2, NULL);
- 
+    //init_sw1();
+    //printf("Initializing switch 1\r\n");
+
     //Test SW2
-    init_sw2();
-    printf("Initializing switch 2\r\n");
+    //init_sw2();
+    //printf("Initializing switch 2\r\n");
 
     //Test RGB
-    init_rgb_led();
-    printf("Initializing RGB LED\r\n");
-
+    //init_rgb_led();
+    //printf("Initializing RGB LED\r\n");
 
 
    // Initialize Buzzer
-   init_buzzer();
-   printf("Initializing the buzzer\n");
+   //init_buzzer();
+   //printf("Initializing the buzzer\n");
 
    
+    // Initialize I2C
+    i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
+    printf("Initializing the i2c\n");
+
+    //Initialize Light Sesnsor VEML6030
+    veml6030_init();
+    printf("Initializing the light sensor\n");
+
     while(true){
         toggle_red_led();
-        printf("SW1 state: %d\n", gpio_get(SW1_PIN));
-        printf("SW2 state: %d\n", gpio_get(SW2_PIN));
+        //printf("SW1 state: %d\n", gpio_get(SW1_PIN));
+        //printf("SW2 state: %d\n", gpio_get(SW2_PIN));
         //buzzer_play_tone(440, 500);
         /*rgb_led_write(255,0,0);
         sleep_ms(1000);
         rgb_led_write(0,255,0);
         sleep_ms(1000);
-        rgb_led_write(0,0,255);
-        sleep_ms(1000);*/
+        rgb_led_write(0,0,255);*/
+        //uint16_t reg = _veml6030_read_register(VEML6030_CONFIG_REG);
+        //printf("Register: 0x%04X\n",(unsigned int)reg);
+        uint32_t light = veml6030_read_light();
+        printf("Light level: %u\n", light);
+        sleep_ms(2000);
     }
 
  
 
-    // Initialize I2C
-    // i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
 
-    //Initialize Light Sesnsor VEML6030
-    // veml6030_init();
+    
+    
 
     //Initialize Temp and Humidity Sesnsor HDC2021
     // hdc2021_init();
@@ -324,8 +332,11 @@ int main() {
     // xTaskCreate(buzzer_task, "BuzzerTask", 256, NULL, 4, NULL);
     // xTaskCreate(light_sensor_task, "LightSensorTask", 256, NULL, 3, NULL);
     // xTaskCreate(ths_task, "THSTask", 256, NULL, 1, NULL);
-    //xTaskCreate(imu_task, "IMUTask", 256, NULL, 1, NULL);
-
+    // xTaskCreate(imu_task, "IMUTask", 256, NULL, 1, NULL);
+    // xTaskCreate(led_simple_task, "LEDSimpleTask", 64, NULL, 1, NULL);
+    // xTaskCreate(sw1_task, "SW1Task", 64, NULL, 1, NULL);
+    // xTaskCreate(led_task, "LEDTask", 64, NULL, 2, NULL);
+ 
 
     //  xTaskCreate(display_task, "DisplayTask", 256, NULL, 2, NULL);
     // // xTaskCreate(mic_task, "MicTask", 256, NULL, 1, NULL);
