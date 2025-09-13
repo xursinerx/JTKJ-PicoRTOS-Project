@@ -54,6 +54,7 @@
         "padsbank0.h": "c",
         "gpio.h": "c",
         "compare": "c",
-        "cstdint": "c"
+        "cstdint": "c",
+        "string.h": "c"
     }
 }

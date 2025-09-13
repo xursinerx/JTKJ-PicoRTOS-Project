@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <string.h>
 #include <FreeRTOS.h>
 #include <hardware/gpio.h>
 #include <hardware/i2c.h>
@@ -10,15 +11,9 @@
 #include <shellSDK/SDK.h>
 #include <pico/binary_info.h>
 
-#define SAMPLE_BUFFER_SIZE 256
-
 // Flag to indicate button press
 volatile bool sw1_pressed = false;
 volatile bool sw2_pressed = false;
-
-// variables
-int16_t sample_buffer[SAMPLE_BUFFER_SIZE];
-volatile int samples_read = 0;
 
 void led_simple_task(void *pwParameters);
 void sw1_task(void *pvParameters);
@@ -238,7 +233,19 @@ void led_task(void *pvParameters) {
         vTaskDelay(100);
     }
 }
+    /*============================
+        MICROPHONE CONFIGURATION
+     =============================*/
+    //Internal sample buffer for sound samples
+    int16_t sample_buffer[MEMS_BUFFER_SIZE];
+    int16_t temp_sample_buffer[MEMS_BUFFER_SIZE];//use to have two different buffers.
+    volatile int samples_read = 0;    
 
+    void on_sound_buffer_ready(){
+        // callback from library when all the samples in the library
+        // internal sample buffer are ready for reading 
+        samples_read = get_microphone_samples(sample_buffer, MEMS_BUFFER_SIZE);
+    }
 
 int main() {
     stdio_init_all();
@@ -274,8 +281,8 @@ int main() {
 
    
     // Initialize I2C
-    i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
-    printf("Initializing the i2c\n");
+    // i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
+    // printf("Initializing the i2c\n");
 
     //Initialize Light Sesnsor VEML6030
     //veml6030_init();
@@ -290,11 +297,19 @@ int main() {
     //printf("Initializating display\n");
 
     //Initialize the microphone
-    init_pdm_microphone();
-    printf("Initializing the microphone");
+    // do not buffer the output for the microphone. 
+    setvbuf(stdout, NULL, _IONBF, 0);
+    int is_mic_init = init_pdm_microphone();
+    if (is_mic_init < 0){
+        printf("PDM microphone initialization failed!\n");
+        sleep_ms(100);
+    }
+    else 
+        printf("Initializing the microphone");
+
 
     while(true){
-        toggle_red_led();
+        set_red_led_status(false);
         //printf("SW1 state: %d\n", gpio_get(SW1_PIN));
         //printf("SW2 state: %d\n", gpio_get(SW2_PIN));
         //buzzer_play_tone(440, 500);
@@ -317,37 +332,74 @@ int main() {
         //draw_square(30,10,20,20, true);
         // draw_square(70,10,20,20, false);
         // write_text_xy(20,40, "Bye");
-        init_microphone_sampling();
-        const uint32_t total_samples = 16000 * 5;//Store 5 seconds at 16Khz. 
-        uint32_t sent_samples = 0;
-        int16_t pcm[16000*5]; //Store 5 seconds at 16Khz. 
-        while (!stdio_usb_connected()) 
-            sleep_ms(50);
-        puts("READY\n");
-        while (sent_samples < total_samples) {
-            int n = get_microphone_samples(pcm, 256);
-            if (n > 0) {
-                const uint8_t *bytes = (const uint8_t *)pcm;
-                size_t len = (size_t)n * sizeof(int16_t);
-                for (size_t i = 0; i < len; ++i) {
-                    putchar_raw(bytes[i]);    // send raw byte (not ASCII)
-                }
-                sent_samples += (uint32_t)n;
-                } else {
-                    // no new buffer yet; avoid busy-spinning too hard
-                    sleep_ms(1);
-                }
-        } 
-        /*RECEIVE IN SERIAL USB (CDC) using the following code: 
-        # put the port in raw mode (important: no line processing)
-        stty -F /dev/ttyACM0 raw -echo -echoe -echok
-        # read until READY
-        grep -m1 -a "READY" < /dev/ttyACM0 >/dev/null
 
-        # read exactly 5 s of audio: 16000 samples/s * 2 bytes/sample * 5s = 160000 bytes
-        head -c 160000 /dev/ttyACM0 > mic_5s_s16le_16k.raw*/
+        //MICROPHONE: 
+        // set callback that is called when all the samples in the library
+        // internal sample buffer are ready for reading
+     
+        if (is_mic_init >=0) {
+            pdm_microphone_set_callback(on_sound_buffer_ready);
+            if (init_microphone_sampling()<0){
+                printf("Cannot start sampling the microphone\n");
+                sleep_ms(500);
+                continue;
+            }
+            // Wait till usb is ready and after that inform other end with READY.
+            while (!stdio_usb_connected()) 
+                sleep_ms(100);
+            //We are going to send 5 seconds. Each sample is two bytes and sampling rate 8Khz. 
+            uint32_t target_bytes = MEMS_SAMPLING_FREQUENCY * 2u * 5u;
+            uint32_t sent_bytes = 0;
+            puts("READY");
+            toggle_red_led();
+            while (sent_bytes < target_bytes){
+                sleep_ms(150); 
+                while (samples_read == 0){
+                    sleep_ms(10);
+                }
+                // store and clear the samples read from the callback
+                int sample_count = samples_read;               
+                
+                // loop through any new collected samples
+                // OPTION 1 using fwrite
+                // First we create a temporary buffer, so i can send data even if I receive another irq. 
+                uint32_t irq = save_and_disable_interrupts();
+                memcpy(temp_sample_buffer, sample_buffer, (size_t)sample_count * sizeof(sample_buffer[0]));
+                samples_read = 0;// restart the samples read
+                restore_interrupts(irq);
+                int sample_sent = fwrite(temp_sample_buffer,sizeof(temp_sample_buffer[0]),sample_count,stdout);
+                sent_bytes += sizeof(temp_sample_buffer[0]) * sample_sent;
+                 
+                //stdio_flush();
 
-         sleep_ms(5000);
+                //OPTION 2 using putchar
+                /*for (int i = 0; i < sample_count; i++) {
+                    int16_t s = sample_buffer[i];
+                    putchar_raw((int8_t)(s & 0xFF));       // LSB
+                    ++sent_bytes;
+                    putchar_raw((int8_t)(s >> 8));         // MSB
+                    ++sent_bytes;
+                }*/
+                //stdio_flush();    
+
+                //OPTION 3: using printf. Only for showing in graph (e.g. in Arduino Uno plotter)
+                /*for (int i = 0; i < sample_count; i++) {
+                    printf("%d\n", sample_buffer[i]);
+                    sent_bytes += sizeof(sample_buffer[0]);
+                }
+                stdio_flush();*/
+
+            /*RECEIVE IN SERIAL USB (CDC) using the following code: 
+            # put the port in raw mode (important: no line processing)
+            stty -F /dev/ttyACM0 raw -echo -echoe -echok
+            # read until READY
+            grep -m1 -a "READY" < /dev/ttyACM0 >/dev/null
+            # read exactly 5 s of audio: 16000 samples/s * 2 bytes/sample * 5s = 160000 bytes
+            head -c 160000 /dev/ttyACM0 > mic_5s_s16le_16k.raw*/
+            }
+            toggle_red_led();
+        }
+        sleep_ms(5000);
     }
 
  

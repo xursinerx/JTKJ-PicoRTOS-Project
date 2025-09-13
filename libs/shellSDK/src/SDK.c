@@ -95,6 +95,22 @@ void toggle_red_led() {
     gpio_put(RED_LED_PIN, !curr);
 }
 
+void set_red_led_status(bool status){
+    gpio_put(RED_LED_PIN,status);
+}
+
+// Helper for debugging. It is inline:
+void blink(int n){
+    for (int i=0;i<n;i++){ 
+        toggle_red_led(); 
+        sleep_ms(120); 
+        toggle_red_led(); 
+        sleep_ms(120); 
+    }
+    gpio_put(RED_LED_PIN,false);
+}
+
+
 // RGB related function
  void init_rgb_led() {
     // Initialize the PWM slice for each RGB pin
@@ -219,7 +235,8 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop) {
 /* =========================
  *  MICROPHONE
  * ========================= */
-
+// Uses https://github.com/ArmDeveloperEcosystem/microphone-library-for-pico/tree/main
+// Uses pio to read pdm data and OpenPDM2PCM library to transform PDM to PCM
 // Microphone related functions
 // Sample rate: 16Khz
 // Buffer size: 256 samples.
@@ -238,10 +255,10 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop) {
     .pio_sm = 0,
 
     // sample rate in Hz
-    .sample_rate = 16000,
+    .sample_rate = MEMS_SAMPLING_FREQUENCY,
 
     // number of samples to buffer
-    .sample_buffer_size = 256,
+    .sample_buffer_size = MEMS_BUFFER_SIZE,
     };
 
     return pdm_microphone_init(&config);

@@ -89,6 +89,13 @@ SOFTWARE.
 
  #define SSD1306_I2C_ADDRESS                    0x3C
 
+ /* =========================
+ *  MEMS MICROPHONE
+ * ========================= */
+
+# define MEMS_SAMPLING_FREQUENCY                8000
+# define MEMS_BUFFER_SIZE                       256
+
 /* =========================
  *  ICM42670
  * ========================= */
@@ -155,6 +162,9 @@ void init_sw2(void);
 /* LEDs */
 void init_red_led(void);
 void toggle_red_led(void);
+void set_red_led_status(bool);
+void blink(int n);
+
 
 void init_rgb_led(void);
 void rgb_led_write(uint8_t r, uint8_t g, uint8_t b);

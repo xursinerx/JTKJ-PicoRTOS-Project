@@ -3,6 +3,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  * 
+ * https://github.com/ArmDeveloperEcosystem/microphone-library-for-pico
+ * 
  */
 
 #include <stdlib.h>
@@ -32,13 +34,18 @@ static struct {
     TPDMFilter_InitStruct filter;
     uint16_t filter_volume;
     pdm_samples_ready_handler_t samples_ready_handler;
+    volatile bool stopping; 
 } pdm_mic;
+
+
 
 static void pdm_dma_handler();
 
 int pdm_microphone_init(const struct pdm_microphone_config* config) {
     memset(&pdm_mic, 0x00, sizeof(pdm_mic));
     memcpy(&pdm_mic.config, config, sizeof(pdm_mic.config));
+
+    pdm_mic.stopping = false;
 
     if (config->sample_buffer_size % (config->sample_rate / 1000)) {
         return -1;
@@ -95,7 +102,7 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
 
     pdm_mic.filter.Fs = config->sample_rate;
     pdm_mic.filter.LP_HZ = config->sample_rate / 2;
-    pdm_mic.filter.HP_HZ = 10;
+    pdm_mic.filter.HP_HZ = 10; 
     pdm_mic.filter.In_MicChannels = 1;
     pdm_mic.filter.Out_MicChannels = 1;
     pdm_mic.filter.Decimation = PDM_DECIMATION;
@@ -103,6 +110,7 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
     pdm_mic.filter.Gain = 16;
 
     pdm_mic.filter_volume = pdm_mic.filter.MaxVolume;
+    return 0;
 }
 
 void pdm_microphone_deinit() {
@@ -122,27 +130,33 @@ void pdm_microphone_deinit() {
 }
 
 int pdm_microphone_start() {
-    irq_set_enabled(pdm_mic.dma_irq, true);
-    irq_set_exclusive_handler(pdm_mic.dma_irq, pdm_dma_handler);
+pdm_mic.stopping = false;
 
+    // Reset SM cleanly before enabling
+    pio_sm_set_enabled(pdm_mic.config.pio, pdm_mic.config.pio_sm, false);
+    pio_sm_clear_fifos(pdm_mic.config.pio, pdm_mic.config.pio_sm);
+    pio_sm_restart(pdm_mic.config.pio, pdm_mic.config.pio_sm);
+
+    // Install handler and clear any stale pending IRQ
+    irq_set_exclusive_handler(pdm_mic.dma_irq, pdm_dma_handler);
     if (pdm_mic.dma_irq == DMA_IRQ_0) {
+        dma_hw->ints0 = (1u << pdm_mic.dma_channel);      // clear pending
         dma_channel_set_irq0_enabled(pdm_mic.dma_channel, true);
     } else if (pdm_mic.dma_irq == DMA_IRQ_1) {
+        dma_hw->ints1 = (1u << pdm_mic.dma_channel);
         dma_channel_set_irq1_enabled(pdm_mic.dma_channel, true);
     } else {
         return -1;
     }
+    irq_set_enabled(pdm_mic.dma_irq, true);
 
     Open_PDM_Filter_Init(&pdm_mic.filter);
 
-    pio_sm_set_enabled(
-        pdm_mic.config.pio,
-        pdm_mic.config.pio_sm,
-        true
-    );
+    // Enable SM and start the first DMA transfer
+    pio_sm_set_enabled(pdm_mic.config.pio, pdm_mic.config.pio_sm, true);
 
     pdm_mic.raw_buffer_write_index = 0;
-    pdm_mic.raw_buffer_read_index = 0;
+    pdm_mic.raw_buffer_read_index  = 0;
 
     dma_channel_transfer_to_buffer_now(
         pdm_mic.dma_channel,
@@ -150,56 +164,56 @@ int pdm_microphone_start() {
         pdm_mic.raw_buffer_size
     );
 
-    pio_sm_set_enabled(
-        pdm_mic.config.pio,
-        pdm_mic.config.pio_sm,
-        true
-    );
+    return 0;
 }
 
 void pdm_microphone_stop() {
-    pio_sm_set_enabled(
-        pdm_mic.config.pio,
-        pdm_mic.config.pio_sm,
-        false
-    );
+    pdm_mic.stopping = true;                 // 1) tell ISR to no-op
+    //pdm_mic.samples_ready_handler = NULL;    //    avoid user callbacks during teardown
 
-    dma_channel_abort(pdm_mic.dma_channel);
+    irq_set_enabled(pdm_mic.dma_irq, false); // 2) block IRQ line globally
 
+    // 3) disable channel IRQ and clear pending
     if (pdm_mic.dma_irq == DMA_IRQ_0) {
         dma_channel_set_irq0_enabled(pdm_mic.dma_channel, false);
-    } else if (pdm_mic.dma_irq == DMA_IRQ_1) {
-        dma_channel_set_irq1_enabled(pdm_mic.dma_channel, false);
-    }
-
-    irq_set_enabled(pdm_mic.dma_irq, false);
-}
-
-static void pdm_dma_handler() {
-    // clear IRQ
-    if (pdm_mic.dma_irq == DMA_IRQ_0) {
         dma_hw->ints0 = (1u << pdm_mic.dma_channel);
-    } else if (pdm_mic.dma_irq == DMA_IRQ_1) {
+    } else {
+        dma_channel_set_irq1_enabled(pdm_mic.dma_channel, false);
         dma_hw->ints1 = (1u << pdm_mic.dma_channel);
     }
 
-    // get the current buffer index
-    pdm_mic.raw_buffer_read_index = pdm_mic.raw_buffer_write_index;
+    dma_channel_abort(pdm_mic.dma_channel);  // 4) now it's safe to abort DMA
 
-    // get the next capture index to send the dma to start
+    // 5) stop the PIO state machine
+    pio_sm_set_enabled(pdm_mic.config.pio, pdm_mic.config.pio_sm, false);
+
+    // 6) reset indices
+    pdm_mic.raw_buffer_write_index = 0;
+    pdm_mic.raw_buffer_read_index  = 0;
+
+    // leave stopping=true; start() will clear it
+}
+
+static void pdm_dma_handler() {
+    // clear IRQ first
+    if (pdm_mic.dma_irq == DMA_IRQ_0) dma_hw->ints0 = (1u << pdm_mic.dma_channel);
+    else                              dma_hw->ints1 = (1u << pdm_mic.dma_channel);
+
+    if (pdm_mic.stopping) return;  // don't re-arm or callback while stopping
+
+    // normal handler body
+    pdm_mic.raw_buffer_read_index  = pdm_mic.raw_buffer_write_index;
     pdm_mic.raw_buffer_write_index = (pdm_mic.raw_buffer_write_index + 1) % PDM_RAW_BUFFER_COUNT;
 
-    // give the channel a new buffer to write to and re-trigger it
     dma_channel_transfer_to_buffer_now(
         pdm_mic.dma_channel,
         pdm_mic.raw_buffer[pdm_mic.raw_buffer_write_index],
         pdm_mic.raw_buffer_size
     );
 
-    if (pdm_mic.samples_ready_handler) {
-        pdm_mic.samples_ready_handler();
-    }
+    if (pdm_mic.samples_ready_handler) pdm_mic.samples_ready_handler();
 }
+
 
 void pdm_microphone_set_samples_ready_handler(pdm_samples_ready_handler_t handler) {
     pdm_mic.samples_ready_handler = handler;
