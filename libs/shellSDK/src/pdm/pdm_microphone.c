@@ -130,7 +130,7 @@ void pdm_microphone_deinit() {
 }
 
 int pdm_microphone_start() {
-pdm_mic.stopping = false;
+    pdm_mic.stopping = false;
 
     // Reset SM cleanly before enabling
     pio_sm_set_enabled(pdm_mic.config.pio, pdm_mic.config.pio_sm, false);

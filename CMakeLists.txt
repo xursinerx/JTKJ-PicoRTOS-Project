@@ -41,7 +41,7 @@ include(FreeRTOS_Kernel_import.cmake)
 
 # Add executable. Default name is the project name, version 0.1
 add_executable(${APP_NAME}
-    test_microphone.c
+    shell_example.c
     )
 
 # Configuration files should go in the include path. Make them available to all libraries at least for FreeRTOS

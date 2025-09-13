@@ -32,7 +32,6 @@ SOFTWARE.
 #include "hardware/irq.h"
 #include "hardware/pwm.h"
 #include <shellSDK/ssd1306.h>
-#include <shellSDK/imu_icm42670.h>
 #include <shellSDK/pdm_microphone.h>
 #include <stdio.h>
 #include <math.h>
@@ -707,51 +706,89 @@ void hdc2021_stop() {
 
 }
 
+/* =========================
+ *  ICM-42670 (IMU)
+ * ========================= */
 
 // IMU related function
+// https://invensense.tdk.com/wp-content/uploads/2021/07/DS-000451-ICM-42670-P-v1.0.pdf
 
- int icm_i2c_write_byte(uint8_t reg, uint8_t value) {
+float aRes, gRes;      // scale resolutions per LSB for the sensors
+
+static int icm_i2c_write_byte(uint8_t reg, uint8_t value) {
     uint8_t buf[2] = { reg, value };
     int result = i2c_write_blocking(i2c_default, ICM42670_I2C_ADDRESS, buf, 2, false);
     return result == 2 ? 0 : -1;
 }
 
 // helper to read a byte from a register
- int icm_i2c_read_byte(uint8_t reg, uint8_t *value) {
+static int icm_i2c_read_byte(uint8_t reg, uint8_t *value) {
     int result = i2c_write_blocking(i2c_default, ICM42670_I2C_ADDRESS, &reg, 1, true);
     if (result != 1) return -1;
     result = i2c_read_blocking(i2c_default, ICM42670_I2C_ADDRESS, value, 1, false);
     return result == 1 ? 0 : -1;
 }
 
- int icm_i2c_read_bytes(uint8_t reg, uint8_t *buffer, uint8_t len) {
+static int icm_i2c_read_bytes(uint8_t reg, uint8_t *buffer, uint8_t len) {
     int result = i2c_write_blocking(i2c_default, ICM42670_I2C_ADDRESS, &reg, 1, true);
     if (result != 1) return -1;
     result = i2c_read_blocking(i2c_default, ICM42670_I2C_ADDRESS, buffer, len, false);
     return result == len ? 0 : -2;
 }
 
+static int icm_soft_reset(void) {
+    int rc = icm_i2c_write_byte(ICM42670_REG_SIGNAL_PATH_RESET, ICM42670_RESET_CONFIG_BITS);
+    sleep_us(400);   // small wait: datasheet calls for ~200 µs before other writes
+    //TODO: For making more robust. Wait till the MCKL_READY is on (clock is running again)
+    return rc;
+}
+
+//TRY TO SOLVE PROBLEM OF FLOATING AD0 pin, JUST IN CASE THE ADDRESS IS CHANGING. 
+static int ICM42670_autodetect_address(void) {
+    const uint8_t cand[2] = { ICM42670_I2C_ADDRESS, ICM42670_I2C_ADDRESS_ALT };
+    for (int i = 0; i < 2; ++i) {
+        // Try a few times to avoid picking up a one-off glitch
+        int hits = 0;
+        for (int t = 0; t < 4; ++t) {
+            uint8_t who = 0, reg = ICM42670_REG_WHO_AM_I;
+            if (i2c_write_blocking(i2c_default, cand[i], &reg, 1, true) != 1) continue;
+            if (i2c_read_blocking(i2c_default, cand[i], &who, 1, false) != 1) continue;
+            if (who == ICM42670_WHO_AM_I_RESPONSE) ++hits;
+        }
+        if (hits >= 3) { return cand[i]; } // majority wins
+    }
+    return -1;
+}
 
 int ICM42670_init() {
-    uint8_t who_am_i = 0;
-    int rc = 0;
+    blink(5);
+    
+    //Soft reset
+    icm_soft_reset();
 
+    //DETECT ADDRESS FOR AD0 floating pin: 
+    int address = ICM42670_autodetect_address();
+    if (address == -1){
+        printf("Address could not be found");
+    }
+    else 
+        printf ("Address: 0x%02X\n",address);
     // Step 1: Check WHO_AM_I
-    rc = icm_i2c_read_byte(ICM42670_REG_WHO_AM_I, &who_am_i);
-    if (rc != 0) {
+    uint8_t who = 0;
+    if (icm_i2c_read_byte(ICM42670_REG_WHO_AM_I, &who) != 0) {
         return -2;
-    }
-    if (who_am_i != ICM42670_WHO_AM_I_RESPONSE) {
+    };
+    if (who != ICM42670_WHO_AM_I_RESPONSE) {
         return -3;
-    }
+    };   
 
-    // Step 2: Configure INT1 pin - polarity high, pulsed, push-pull
-    rc = icm_i2c_write_byte(ICM42670_INT_CONFIG, ICM42670_INT1_CONFIG_VALUE);
-    if (rc != 0) {
+    // Step 2: Configure INT1 pin - push-pull, active-low, pulsed
+    if(icm_i2c_write_byte(ICM42670_INT_CONFIG, ICM42670_INT1_CONFIG_VALUE) != 0){ 
         return -4;
     }
-
-
+    // tiny guard delay after init writes
+    sleep_us(200);
+    
     // Step 3: Success
     return 0;
 }
@@ -760,12 +797,24 @@ int ICM42670_startAccel(uint16_t odr_hz, uint16_t fsr_g) {
     uint8_t fsr_bits = 0;
     uint8_t odr_bits = 0;
 
-    // Map FSR to register bits
+    // Map FSR to register bits, aRes (See Datasheet Table 2)
     switch (fsr_g) {
-        case 2:  fsr_bits = ICM42670_ACCEL_FSR_2G; break;
-        case 4:  fsr_bits = ICM42670_ACCEL_FSR_4G; break;
-        case 8:  fsr_bits = ICM42670_ACCEL_FSR_8G; break;
-        case 16: fsr_bits = ICM42670_ACCEL_FSR_16G; break;
+        case 2:  
+            fsr_bits = ICM42670_ACCEL_FSR_2G;
+            aRes = 16384; 
+            break;
+        case 4:  
+            fsr_bits = ICM42670_ACCEL_FSR_4G;
+            aRes = 8192;
+            break;
+        case 8:  
+            fsr_bits = ICM42670_ACCEL_FSR_8G; 
+            aRes =4096;
+            break;
+        case 16: 
+            fsr_bits = ICM42670_ACCEL_FSR_16G;
+            aRes = 2048;
+            break;
         default: return -1; // invalid FSR
     }
 
@@ -784,27 +833,33 @@ int ICM42670_startAccel(uint16_t odr_hz, uint16_t fsr_g) {
     // Combine into ACCEL_CONFIG0: [7:5] = fsr, [3:0] = odr
     uint8_t accel_config0_val = (fsr_bits << 5) | (odr_bits & 0x0F);
     int rc = icm_i2c_write_byte(ICM42670_ACCEL_CONFIG0_REG, accel_config0_val);
+    sleep_us(200); 
     if (rc != 0) return -3;
-
-    // Set accelerometer to Low Noise (LN) mode via PWR_MGMT0
-    // We only touch the lower 2 bits for accel_mode
-    rc = icm_i2c_write_byte(ICM42670_PWR_MGMT0_REG, ICM42670_ACCEL_MODE_LN);
-    if (rc != 0) return -4;
-
     return 0; // success
 }
 
 int ICM42670_startGyro(uint16_t odr_hz, uint16_t fsr_dps) {
     uint8_t fsr_bits = 0;
     uint8_t odr_bits = 0;
-    uint8_t pwr_mgmt0 = 0;
-
-    // Map FSR
+ 
+    // Map FSR, gRes (See Datasheet Table 1)
     switch (fsr_dps) {
-        case 250:  fsr_bits = 0x03; break;
-        case 500:  fsr_bits = 0x02; break;
-        case 1000: fsr_bits = 0x01; break;
-        case 2000: fsr_bits = 0x00; break;
+        case 250:  
+            fsr_bits = 0x03;
+            gRes = 131; 
+            break;
+        case 500:  
+            fsr_bits = 0x02;
+            gRes = 65.5;
+            break;
+        case 1000: 
+            fsr_bits = 0x01;
+            gRes = 32.8;
+            break;
+        case 2000: 
+            fsr_bits = 0x00;
+            gRes = 16.4;
+            break;
         default:   return -1;
     }
 
@@ -822,27 +877,39 @@ int ICM42670_startGyro(uint16_t odr_hz, uint16_t fsr_dps) {
 
     // Write GYRO_CONFIG0
     uint8_t gyro_config0_val = (fsr_bits << 5) | (odr_bits & 0x0F);
-    if (icm_i2c_write_byte(0x20, gyro_config0_val) != 0) return -3;
-
-    // Read-modify-write PWR_MGMT0 to set Gyro mode to LN (bits 3:2 = 11)
-    if (i2c_read_blocking(i2c_default, ICM42670_I2C_ADDRESS, (uint8_t[]){0x1F}, 1, true) != 1)
-        return -4;
-    if (i2c_read_blocking(i2c_default, ICM42670_I2C_ADDRESS, &pwr_mgmt0, 1, false) != 1)
-        return -5;
-
-    pwr_mgmt0 &= ~(0b11 << 2);          // Clear bits 3:2
-    pwr_mgmt0 |= (0b11 << 2);           // Set to LN
-    if (icm_i2c_write_byte(0x1F, pwr_mgmt0) != 0) return -6;
-
+    if (icm_i2c_write_byte(ICM42670_GYRO_CONFIG0_REG, gyro_config0_val) != 0) return -3;
+    sleep_us(200); 
     return 0;
 }
 
+//put in low noise both acc and gyr
 int ICM42670_enable_accel_gyro_ln_mode() {
-    return icm_i2c_write_byte(0x1F, 0x0F); // bits 3:2 = gyro LN, bits 1:0 = accel LN
+    int rc = icm_i2c_write_byte(ICM42670_PWR_MGMT0_REG , 0x0F); // bits 3:2 = gyro LN, bits 1:0 = accel LN
+    sleep_us(200);
+    return rc;
 }
 
-int ICM42670_read_sensor_data(int16_t *ax, int16_t *ay, int16_t *az,
-    int16_t *gx, int16_t *gy, int16_t *gz,int16_t *t) {
+//Remove gyro and low power mode for accelearoter
+int ICM42670_enable_ultra_low_power_mode(void) {
+    // Accel = LP (10), Gyro = OFF (00)
+    // PWR_MGMT0 = 0b00000010 = 0x02
+    int rc = icm_i2c_write_byte(ICM42670_PWR_MGMT0_REG , 0x02);
+    sleep_us(200);
+    return rc;
+}
+
+//Both gyro and acceleremoter in low power. Usually the gyro has lot of errors. 
+int ICM42670_enable_accel_gyro_lp_mode(void) {
+    // Gyro = 10 (LP), Accel = 10 (LP)
+    // 0b00001010 = 0x0A
+    int rc = icm_i2c_write_byte(ICM42670_PWR_MGMT0_REG, 0x0A);
+    sleep_us(200);
+    return rc;
+}
+
+
+int ICM42670_read_sensor_data(float *ax, float *ay, float *az,
+    float *gx, float *gy, float *gz,float *t) {
         
         uint8_t raw[14]; // 14 bytes total from TEMP to GYRO Z
 
@@ -850,16 +917,21 @@ int ICM42670_read_sensor_data(int16_t *ax, int16_t *ay, int16_t *az,
         if (rc != 0) return rc;
 
         // Convert to signed 16-bit integers (big-endian)
-        *t  = (int16_t)((raw[0] << 8) | raw[1]);
-        
-        *ax = ((int16_t)raw[2] << 8) | raw[3];
-        *ay = ((int16_t)raw[4] << 8) | raw[5];
-        *az = ((int16_t)raw[6] << 8) | raw[7];
+        int16_t t_raw = (int16_t)((raw[0] << 8) | raw[1]);
+        int16_t ax_raw = ((int16_t)raw[2] << 8) | raw[3];
+        int16_t ay_raw = ((int16_t)raw[4] << 8) | raw[5];
+        int16_t az_raw = ((int16_t)raw[6] << 8) | raw[7];
+        int16_t gx_raw = (int16_t)((raw[8] << 8) | raw[9]);
+        int16_t gy_raw = (int16_t)((raw[10] << 8) | raw[11]);
+        int16_t gz_raw = (int16_t)((raw[12] << 8) | raw[13]);
 
-        *gx = (int16_t)((raw[8] << 8) | raw[9]);
-        *gy = (int16_t)((raw[10] << 8) | raw[11]);
-        *gz = (int16_t)((raw[12] << 8) | raw[13]);
-
+        *t = ((float)t_raw / 128.0f)+ 25.0;
+        *ax =  (float)ax_raw / aRes; 
+        *ay =  (float)ay_raw / aRes; 
+        *az =  (float)az_raw / aRes;
+        *gx =  (float)gx_raw / gRes; 
+        *gy =  (float)gy_raw / gRes; 
+        *gz =  (float)gz_raw / gRes;
         return 0; // success
 }
 

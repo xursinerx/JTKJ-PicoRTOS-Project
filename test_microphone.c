@@ -68,7 +68,6 @@ static inline void _blink(int n){
                     continue;
                 }
                 set_red_led_status(true);
-                puts("READY");
                 while (sent_bytes < target_bytes){
                     if (!stdio_usb_connected()) {
                         _blink(1);

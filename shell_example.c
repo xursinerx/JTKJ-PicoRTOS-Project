@@ -98,7 +98,7 @@ void ths_task(void *pvParameters) {
 void imu_task(void *pvParameters) {
     (void)pvParameters;
     
-    int16_t ax, ay, az, gx, gy, gz, t;
+    float ax, ay, az, gx, gy, gz, t;
 
     while (1)
     {
@@ -281,8 +281,8 @@ int main() {
 
    
     // Initialize I2C
-    // i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
-    // printf("Initializing the i2c\n");
+    i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
+    printf("Initializing the i2c\n");
 
     //Initialize Light Sesnsor VEML6030
     //veml6030_init();
@@ -297,19 +297,25 @@ int main() {
     //printf("Initializating display\n");
 
     //Initialize the microphone
-    // do not buffer the output for the microphone. 
-    setvbuf(stdout, NULL, _IONBF, 0);
-    int is_mic_init = init_pdm_microphone();
-    if (is_mic_init < 0){
-        printf("PDM microphone initialization failed!\n");
-        sleep_ms(100);
-    }
-    else 
-        printf("Initializing the microphone");
+    //Microhpone test in test_microphone.c
 
+    //Initialize IMU
+    if (ICM42670_init() == 0) {
+        printf("ICM-42670P initialized successfully!\n");
+        if (ICM42670_startAccel(ICM42670_ACCEL_ODR_DEFAULT, ICM42670_ACCEL_FSR_DEFAULT) != 0){
+            printf("Wrong values to init the accelerometer in ICM-42670P.\n");
+        }
+        if (ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT, ICM42670_GYRO_FSR_DEFAULT) != 0){
+            printf("Wrong values to init the gyroscope in ICM-42670P.\n");
+        };
+        ICM42670_enable_accel_gyro_ln_mode();
+    } else {
+        printf("Failed to initialize ICM-42670P.\n");
+    }
+    float ax, ay, az, gx, gy, gz, t;
 
     while(true){
-        set_red_led_status(false);
+        set_red_led_status(true);
         //printf("SW1 state: %d\n", gpio_get(SW1_PIN));
         //printf("SW2 state: %d\n", gpio_get(SW2_PIN));
         //buzzer_play_tone(440, 500);
@@ -332,75 +338,22 @@ int main() {
         //draw_square(30,10,20,20, true);
         // draw_square(70,10,20,20, false);
         // write_text_xy(20,40, "Bye");
+        
 
-        //MICROPHONE: 
-        // set callback that is called when all the samples in the library
-        // internal sample buffer are ready for reading
-     
-        if (is_mic_init >=0) {
-            pdm_microphone_set_callback(on_sound_buffer_ready);
-            if (init_microphone_sampling()<0){
-                printf("Cannot start sampling the microphone\n");
-                sleep_ms(500);
-                continue;
-            }
-            // Wait till usb is ready and after that inform other end with READY.
-            while (!stdio_usb_connected()) 
-                sleep_ms(100);
-            //We are going to send 5 seconds. Each sample is two bytes and sampling rate 8Khz. 
-            uint32_t target_bytes = MEMS_SAMPLING_FREQUENCY * 2u * 5u;
-            uint32_t sent_bytes = 0;
-            puts("READY");
-            toggle_red_led();
-            while (sent_bytes < target_bytes){
-                sleep_ms(150); 
-                while (samples_read == 0){
-                    sleep_ms(10);
-                }
-                // store and clear the samples read from the callback
-                int sample_count = samples_read;               
-                
-                // loop through any new collected samples
-                // OPTION 1 using fwrite
-                // First we create a temporary buffer, so i can send data even if I receive another irq. 
-                uint32_t irq = save_and_disable_interrupts();
-                memcpy(temp_sample_buffer, sample_buffer, (size_t)sample_count * sizeof(sample_buffer[0]));
-                samples_read = 0;// restart the samples read
-                restore_interrupts(irq);
-                int sample_sent = fwrite(temp_sample_buffer,sizeof(temp_sample_buffer[0]),sample_count,stdout);
-                sent_bytes += sizeof(temp_sample_buffer[0]) * sample_sent;
-                 
-                //stdio_flush();
+        if (ICM42670_read_sensor_data(&ax, &ay, &az, &gx, &gy, &gz, &t) == 0) {
+            
+            printf("Accel: X=%f, Y=%f, Z=%f | Gyro: X=%f, Y=%f, Z=%f| Temp: %2.2f°C\n", ax, ay, az, gx, gy, gz, t);
 
-                //OPTION 2 using putchar
-                /*for (int i = 0; i < sample_count; i++) {
-                    int16_t s = sample_buffer[i];
-                    putchar_raw((int8_t)(s & 0xFF));       // LSB
-                    ++sent_bytes;
-                    putchar_raw((int8_t)(s >> 8));         // MSB
-                    ++sent_bytes;
-                }*/
-                //stdio_flush();    
-
-                //OPTION 3: using printf. Only for showing in graph (e.g. in Arduino Uno plotter)
-                /*for (int i = 0; i < sample_count; i++) {
-                    printf("%d\n", sample_buffer[i]);
-                    sent_bytes += sizeof(sample_buffer[0]);
-                }
-                stdio_flush();*/
-
-            /*RECEIVE IN SERIAL USB (CDC) using the following code: 
-            # put the port in raw mode (important: no line processing)
-            stty -F /dev/ttyACM0 raw -echo -echoe -echok
-            # read until READY
-            grep -m1 -a "READY" < /dev/ttyACM0 >/dev/null
-            # read exactly 5 s of audio: 16000 samples/s * 2 bytes/sample * 5s = 160000 bytes
-            head -c 160000 /dev/ttyACM0 > mic_5s_s16le_16k.raw*/
-            }
-            toggle_red_led();
+        } else {
+            printf("Failed to read imu data\n");
         }
-        sleep_ms(5000);
-    }
+        sleep_ms(1000);
+        
+
+        
+
+    }// end infite loop
+        
 
  
 
@@ -408,26 +361,7 @@ int main() {
     
     
 
-    //Initialize Temp and Humidity Sesnsor HDC2021
-    // hdc2021_init();
-
-
-
-    //Initialize IMU
-    /*if (ICM42670_init()) {
-        printf("ICM-42670P initialized successfully!\n");
-        ICM42670_startAccel(100, 16);
-        ICM42670_startGyro(100, 250);
-        ICM42670_enable_accel_gyro_ln_mode();
-    } else {
-        printf("Failed to initialize ICM-42670P.\n");
-    }*/
-
-    // init_pdm_microphone();
-    // start_pdm_microphone();
-    // pdm_microphone_set_callback(on_mic_data_ready);
-
-    // init_THS();
+   
 
     // Create tasks
     

@@ -100,6 +100,7 @@ SOFTWARE.
  *  ICM42670
  * ========================= */
 #define ICM42670_I2C_ADDRESS                    0x69
+#define ICM42670_I2C_ADDRESS_ALT                0x69
 #define ICM42670_REG_WHO_AM_I                   0x75
 #define ICM42670_WHO_AM_I_RESPONSE              0x67
 #define ICM42670_INT_CONFIG                     0x06
@@ -115,6 +116,8 @@ SOFTWARE.
 #define ICM42670_ACCEL_FSR_4G                   0x02
 #define ICM42670_ACCEL_FSR_8G                   0x01
 #define ICM42670_ACCEL_FSR_16G                  0x00
+#define ICM42670_ACCEL_FSR_DEFAULT              4
+#define ICM42670_GYRO_FSR_DEFAULT               250
 
 // Accel ODR encodings (LN mode)
 #define ICM42670_ACCEL_ODR_25HZ                 0x0B
@@ -124,12 +127,15 @@ SOFTWARE.
 #define ICM42670_ACCEL_ODR_400HZ                0x07
 #define ICM42670_ACCEL_ODR_800HZ                0x06
 #define ICM42670_ACCEL_ODR_1600HZ               0x05
+#define ICM42670_ACCEL_ODR_DEFAULT              100
+#define ICM42670_GYRO_ODR_DEFAULT               100
 
 // Accel LN mode in PWR_MGMT0
-#define ICM42670_ACCEL_MODE_LN                  0x03
-
-#define ICM42670_GYRO_CONFIG0_REG               0x20
 /* note: ICM42670_PWR_MGMT0_REG also defined above */
+#define ICM42670_ACCEL_MODE_LN                  0x03
+#define ICM42670_GYRO_CONFIG0_REG               0x20
+#define ICM42670_REG_SIGNAL_PATH_RESET          0x02
+#define ICM42670_RESET_CONFIG_BITS              0x10
 
 // Gyro FSR encodings
 #define ICM42670_GYRO_FSR_250DPS                0x03
@@ -220,8 +226,8 @@ int ICM42670_init(void);
 int ICM42670_startAccel(uint16_t odr_hz, uint16_t fsr_g);
 int ICM42670_startGyro(uint16_t odr_hz, uint16_t fsr_dps);
 int ICM42670_enable_accel_gyro_ln_mode(void);
-int ICM42670_read_sensor_data(int16_t *ax, int16_t *ay, int16_t *az,
-                              int16_t *gx, int16_t *gy, int16_t *gz,
-                              int16_t *t);
+int ICM42670_read_sensor_data(float *ax, float *ay, float *az,
+                              float *gx, float *gy, float *gz,
+                              float *t);
 
 #endif /* SDK_H */
