@@ -8,7 +8,7 @@
 #include <queue.h>
 #include <task.h>
 
-#include <shellSDK/SDK.h>
+#include <tkjhat/sdk.h>
 #include <pico/binary_info.h>
 
 // Flag to indicate button press
@@ -250,7 +250,7 @@ void led_task(void *pvParameters) {
 int main() {
     stdio_init_all();
     sleep_ms(2000); //Wait to see the output.
-    init_shell();
+    init_hat_sdk();
     printf("Start tests\n");
     
     // Initialize LED

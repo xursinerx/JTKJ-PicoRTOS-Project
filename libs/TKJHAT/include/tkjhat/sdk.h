@@ -26,44 +26,23 @@ SOFTWARE.
 #ifndef SDK_H
 #define SDK_H
 
-#include "pico/stdlib.h"
-#include "hardware/i2c.h"
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <shellSDK/pdm_microphone.h>   // pdm_samples_ready_handler_t
+#include "pico/stdlib.h"
+#include "hardware/i2c.h"
 
-/* =========================
- *  Board / pin macros
- * ========================= */
+#include "pdm_microphone.h"   // pdm_samples_ready_handler_t
+#include "pins.h"
 
-#define DEFAULT_I2C_SDA_PIN                     12
-#define DEFAULT_I2C_SCL_PIN                     13
 
-#define DEFAULT_UART_0                          0
-#define DEFAULT_UART_1                          1
-
-#define SW1_PIN                                 02
-#define SW2_PIN                                 22
-
-#define RED_LED_PIN                             14
-
-#define RGB_LED_R                               18
-#define RGB_LED_G                               19
-#define RGB_LED_B                               20
-
-#define BUZZER_PIN                              17
-
-#define PDM_DATA                                16
-#define PDM_CLK                                 15
 
 /* =========================
  *  VEML6030
  * ========================= */
 #define VEML6030_I2C_ADDR                       0x10
-#define VEML6030_INTERRUPT                      9
 #define VEML6030_CONFIG_REG                     0x00
 #define VEML6030_ALS_REG                        0x04
 
@@ -71,7 +50,6 @@ SOFTWARE.
  *  HDC2021
  * ========================= */
 #define HDC2021_I2C_ADDRESS                     0x40
-#define HDC2021_INTERRUPT                       21
 #define HDC2021_TEMP_LOW                        0x00
 #define HDC2021_TEMP_HIGH                       0x01
 #define HDC2021_HUMIDITY_LOW                    0x02
@@ -159,7 +137,7 @@ SOFTWARE.
  *  Public function prototypes
  * ========================= */
 
-void init_shell(void);
+void init_hat_sdk(void);
 
 /* Switches */
 void init_sw1(void);

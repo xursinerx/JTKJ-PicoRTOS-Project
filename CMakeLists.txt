@@ -29,7 +29,7 @@ set(PICO_BOARD pico_w CACHE STRING "Board type")
 include(pico_sdk_import.cmake)
 
 # Define app name once
-set(APP_NAME shell)
+set(APP_NAME hat_example)
 
 project(${APP_NAME} C CXX ASM)
 
@@ -41,7 +41,7 @@ include(FreeRTOS_Kernel_import.cmake)
 
 # Add executable. Default name is the project name, version 0.1
 add_executable(${APP_NAME}
-    shell_example.c
+    hat_example.c
     )
 
 # Configuration files should go in the include path. Make them available to all libraries at least for FreeRTOS
@@ -51,7 +51,7 @@ set(FREERTOS_CONFIG_DIR "${CMAKE_SOURCE_DIR}/config")
 include_directories(${FREERTOS_CONFIG_DIR})
 
 # Add librabries. The SDK is using the FreeRTOS so always after the include_directories
-add_subdirectory(libs/shellSDK)
+add_subdirectory(libs/TKJHAT)
 
 # Links. Add all libraries that application is using. It must at least use the pico_stdlib and the FreeRTOS-Kernel-Heap4
 # FREERTOS: Note, you should pick the FreeRTOS library that suits you best:
@@ -62,7 +62,7 @@ add_subdirectory(libs/shellSDK)
 target_link_libraries(${APP_NAME}
   pico_stdlib
   FreeRTOS-Kernel-Heap4
-  shellSDK
+  TKJHAT_SDK
   hardware_i2c
   hardware_pio
   hardware_dma

@@ -18,7 +18,7 @@
 
 #include "pdm_microphone.pio.h"
 
-#include <shellSDK/pdm_microphone.h>
+#include <tkjhat/pdm_microphone.h>
 
 #define PDM_DECIMATION       64
 #define PDM_RAW_BUFFER_COUNT 2

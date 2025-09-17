@@ -2,7 +2,7 @@
 #include <string.h>
 #include <hardware/gpio.h>
 #include <pico/stdlib.h>
-#include <shellSDK/SDK.h>
+#include <tkjhat/sdk.h>
 #include <pico/binary_info.h>
 #include <hardware/sync.h>
 

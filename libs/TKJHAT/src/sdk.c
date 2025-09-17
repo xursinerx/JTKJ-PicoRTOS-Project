@@ -25,14 +25,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <shellSDK/SDK.h>
+#include <tkjhat/sdk.h>
 // #include <icm42670.h>
 
 //#include "tusb.h" //is it needed?
 #include "hardware/irq.h"
 #include "hardware/pwm.h"
-#include <shellSDK/ssd1306.h>
-#include <shellSDK/pdm_microphone.h>
+#include <tkjhat/ssd1306.h>
+#include <tkjhat/pdm_microphone.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -63,7 +63,7 @@ static int addr = 0x68;
 static ssd1306_t disp;
 
 
-void init_shell(){
+void init_hat_sdk(){
     //Turn off the RGB
     stop_rgb_led();
 }
@@ -760,6 +760,16 @@ static int ICM42670_autodetect_address(void) {
     return -1;
 }
 
+//TODO do initial calibration. 
+static void calibrateAccel(float *dest1){
+
+}
+
+static void calibrateGyro(float *dest2){
+
+
+}
+
 int ICM42670_init() {
     blink(5);
     
@@ -906,6 +916,7 @@ int ICM42670_enable_accel_gyro_lp_mode(void) {
     sleep_us(200);
     return rc;
 }
+
 
 
 int ICM42670_read_sensor_data(float *ax, float *ay, float *az,

@@ -1,4 +1,7 @@
-# ShellSDK
+# TKJHAT_SDK
+
+# Define app name once
+set(APP_NAME TKJHAT_SDK)
 
 # ---- sources ----
 # Explicit sources + glob only for the 3rd-party folder
@@ -7,8 +10,8 @@ file(GLOB OPENPDM_SRCS CONFIGURE_DEPENDS
 )
 
 # Generate a library 
-add_library(shellSDK STATIC
-  src/SDK.c
+add_library(${APP_NAME} STATIC
+  src/sdk.c
   src/ssd1306.c
   src/pdm/pdm_microphone.c
   ${OPENPDM_SRCS}
@@ -16,7 +19,7 @@ add_library(shellSDK STATIC
 
 # ---- headers / include paths ----
 # Public API headers live in include/  -> consumers: #include "SDK.h", "ssd1306.h", etc.
-target_include_directories(shellSDK
+target_include_directories(${APP_NAME}
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
   PRIVATE
@@ -24,13 +27,13 @@ target_include_directories(shellSDK
 )
 
 # ---- PIO code assembler for the mic ----
-pico_generate_pio_header(shellSDK
+pico_generate_pio_header(${APP_NAME}
   ${CMAKE_CURRENT_SOURCE_DIR}/src/pdm/pdm_microphone.pio
 )
 
 # ---- link dependencies used by implementation ----
 # TODO: Check if all those are really needed
-target_link_libraries(shellSDK PRIVATE
+target_link_libraries(${APP_NAME} PRIVATE
   pico_stdlib
   FreeRTOS-Kernel
   FreeRTOS-Kernel-Heap4
@@ -45,5 +48,5 @@ target_link_libraries(shellSDK PRIVATE
 )
 
 # (Optional) tighten C standard
-target_compile_features(shellSDK PUBLIC c_std_11)
-message("Added support for the  shellSDK library")
+target_compile_features(${APP_NAME} PUBLIC c_std_11)
+message("Added support for the  TKJHAT_SDK library")
