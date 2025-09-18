@@ -27,4 +27,4 @@
 
 #define VEML6030_INTERRUPT                      9
 #define HDC2021_INTERRUPT                       21
-
+#define ICM42670_INT                            6
