@@ -14,6 +14,7 @@
 #define BUTTON2                                 SW2_PIN
 
 #define RED_LED_PIN                             14
+#define LED1                                    RED_LED_PIN
 
 #define RGB_LED_R                               18
 #define RGB_LED_G                               19
