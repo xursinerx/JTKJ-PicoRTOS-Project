@@ -55,6 +55,7 @@
         "gpio.h": "c",
         "compare": "c",
         "cstdint": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "stddef.h": "c"
     }
 }

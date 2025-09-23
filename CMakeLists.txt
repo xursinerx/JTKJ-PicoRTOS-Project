@@ -41,16 +41,50 @@ include(FreeRTOS_Kernel_import.cmake)
 
 # Add executable. Default name is the project name, version 0.1
 add_executable(${APP_NAME}
-    hat_example.c
+    src/hat_example.c
     )
 
 # Configuration files should go in the include path. Make them available to all libraries at least for FreeRTOS
 # Other libraries would use target_include_directories.
 # FREERTOS:
-set(FREERTOS_CONFIG_DIR "${CMAKE_SOURCE_DIR}/config")
-include_directories(${FREERTOS_CONFIG_DIR})
+# set(FREERTOS_CONFIG_DIR "${CMAKE_SOURCE_DIR}/config")
+#include_directories(${FREERTOS_CONFIG_DIR})
 
-# Add librabries. The SDK is using the FreeRTOS so always after the include_directories
+# Option 2. Only for FreeRTOS target. 
+target_include_directories(FreeRTOS-Kernel INTERFACE
+  ${CMAKE_CURRENT_LIST_DIR}/config
+)
+
+#In the case of the USB, we are using a library. Import in target_link_libraries, or ovewrite. 
+add_library(cfg_usb_default INTERFACE)
+target_include_directories(cfg_usb_default INTERFACE
+  ${CMAKE_CURRENT_LIST_DIR}/config
+)
+target_compile_definitions(cfg_usb_default INTERFACE
+  TUSB_CONFIG_FILE="\"${CMAKE_CURRENT_LIST_DIR}/config/tusb_config.h\""
+)
+
+# TinyUSB Add configuration
+#target_compile_definitions(tinyusb_device INTERFACE
+#  TUSB_CONFIG_FILE="\"${CMAKE_CURRENT_LIST_DIR}/config/tusb_config.h\""
+#)
+#target_include_directories(tinyusb_device INTERFACE
+#  ${CMAKE_CURRENT_LIST_DIR}/config
+#)
+
+# Option 3: 
+# --- Convenience cfg lib: exposes *default* config dir/defines to consumers ---
+#add_library(cfg_default INTERFACE)
+#target_include_directories(cfg_default INTERFACE
+#  ${CMAKE_CURRENT_LIST_DIR}/config
+#)
+#target_compile_definitions(cfg_default INTERFACE
+#  TUSB_CONFIG_FILE="\"${CMAKE_CURRENT_LIST_DIR}/config/tusb_config.h\""
+#)
+# The target_link_libraries should include the cfg_library
+
+
+# Add librabries. The TKJHAT does not use libraries from FreeRTOS
 add_subdirectory(libs/TKJHAT)
 
 # Links. Add all libraries that application is using. It must at least use the pico_stdlib and the FreeRTOS-Kernel-Heap4
@@ -68,7 +102,9 @@ target_link_libraries(${APP_NAME}
   hardware_dma
   hardware_adc 
   hardware_pwm
+  cfg_usb_default
 )
+
 
 if (PICO_CYW43_SUPPORTED)
     target_link_libraries(${APP_NAME} pico_cyw43_arch_none)
