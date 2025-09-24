@@ -39,10 +39,6 @@ pico_sdk_init()
 # FREERTOS: include FreeRTOS Kernel libraries
 include(FreeRTOS_Kernel_import.cmake)
 
-# Add executable. Default name is the project name, version 0.1
-add_executable(${APP_NAME}
-    src/hat_example.c
-    )
 
 # Configuration files should go in the include path. Make them available to all libraries at least for FreeRTOS
 # Other libraries would use target_include_directories.
@@ -53,56 +49,38 @@ add_executable(${APP_NAME}
 # Option 2. Only for FreeRTOS target. 
 target_include_directories(FreeRTOS-Kernel INTERFACE
   ${CMAKE_CURRENT_LIST_DIR}/config
-)
+  )
+  
+  
+  
+  # Add librabries. The TKJHAT does not use libraries from FreeRTOS
+  add_subdirectory(libs/TKJHAT)
+  # Support for usb serial communication
+  add_subdirectory(libs/usb-cdc)
+  # Add examples
+  add_subdirectory(examples/test_cdc)
+  
+  # Add executable. Default name is the project name, version 0.1
+  add_executable(${APP_NAME}
+      src/hat_example.c
+      )
 
-#In the case of the USB, we are using a library. Import in target_link_libraries, or ovewrite. 
-add_library(cfg_usb_default INTERFACE)
-target_include_directories(cfg_usb_default INTERFACE
-  ${CMAKE_CURRENT_LIST_DIR}/config
-)
-target_compile_definitions(cfg_usb_default INTERFACE
-  TUSB_CONFIG_FILE="\"${CMAKE_CURRENT_LIST_DIR}/config/tusb_config.h\""
-)
-
-# TinyUSB Add configuration
-#target_compile_definitions(tinyusb_device INTERFACE
-#  TUSB_CONFIG_FILE="\"${CMAKE_CURRENT_LIST_DIR}/config/tusb_config.h\""
-#)
-#target_include_directories(tinyusb_device INTERFACE
-#  ${CMAKE_CURRENT_LIST_DIR}/config
-#)
-
-# Option 3: 
-# --- Convenience cfg lib: exposes *default* config dir/defines to consumers ---
-#add_library(cfg_default INTERFACE)
-#target_include_directories(cfg_default INTERFACE
-#  ${CMAKE_CURRENT_LIST_DIR}/config
-#)
-#target_compile_definitions(cfg_default INTERFACE
-#  TUSB_CONFIG_FILE="\"${CMAKE_CURRENT_LIST_DIR}/config/tusb_config.h\""
-#)
-# The target_link_libraries should include the cfg_library
-
-
-# Add librabries. The TKJHAT does not use libraries from FreeRTOS
-add_subdirectory(libs/TKJHAT)
-
-# Links. Add all libraries that application is using. It must at least use the pico_stdlib and the FreeRTOS-Kernel-Heap4
-# FREERTOS: Note, you should pick the FreeRTOS library that suits you best:
-#
-# FreeRTOS-Kernel-Heap1 thru FreeRTOS-Kernel_Heap4
-# or
-# FreeRTOS-Kernel-Static
-target_link_libraries(${APP_NAME}
-  pico_stdlib
-  FreeRTOS-Kernel-Heap4
-  TKJHAT_SDK
-  hardware_i2c
-  hardware_pio
-  hardware_dma
-  hardware_adc 
-  hardware_pwm
-  cfg_usb_default
+  # Links. Add all libraries that application is using. It must at least use the pico_stdlib and the FreeRTOS-Kernel-Heap4
+  # FREERTOS: Note, you should pick the FreeRTOS library that suits you best:
+  #
+  # FreeRTOS-Kernel-Heap1 thru FreeRTOS-Kernel_Heap4
+  # or
+  # FreeRTOS-Kernel-Static
+  target_link_libraries(${APP_NAME}
+    pico_stdlib
+    FreeRTOS-Kernel-Heap4
+    hardware_i2c
+    hardware_pio
+    hardware_dma
+    hardware_adc 
+    hardware_pwm
+    TKJHAT_SDK
+    cfg-usbcdc
 )
 
 
