@@ -33,7 +33,7 @@ static inline void _blink(int n){
     int main() {
         stdio_init_all();
         sleep_ms(1500); //Wait to see the output.
-        init_shell();
+        init_hat_sdk();
         setvbuf(stdout, NULL, _IONBF, 0);
         printf("Start tests\n");
         

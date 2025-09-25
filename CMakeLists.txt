@@ -59,10 +59,13 @@ target_include_directories(FreeRTOS-Kernel INTERFACE
   add_subdirectory(libs/usb-cdc)
   # Add examples
   add_subdirectory(examples/test_cdc)
+  add_subdirectory(examples/test_microphone)
+
+
   
   # Add executable. Default name is the project name, version 0.1
   add_executable(${APP_NAME}
-      src/hat_example.c
+      src/main.c
       )
 
   # Links. Add all libraries that application is using. It must at least use the pico_stdlib and the FreeRTOS-Kernel-Heap4
@@ -74,11 +77,6 @@ target_include_directories(FreeRTOS-Kernel INTERFACE
   target_link_libraries(${APP_NAME}
     pico_stdlib
     FreeRTOS-Kernel-Heap4
-    hardware_i2c
-    hardware_pio
-    hardware_dma
-    hardware_adc 
-    hardware_pwm
     TKJHAT_SDK
     cfg-usbcdc
 )

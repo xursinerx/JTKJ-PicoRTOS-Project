@@ -32,7 +32,7 @@ SOFTWARE.
 #include <stdbool.h>
 
 #include "pico/stdlib.h"
-#include "hardware/i2c.h"
+#include <hardware/i2c.h>
 
 #include "pdm_microphone.h"   // pdm_samples_ready_handler_t
 #include "pins.h"

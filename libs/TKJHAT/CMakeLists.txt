@@ -33,7 +33,7 @@ pico_generate_pio_header(${APP_NAME}
 
 # ---- link dependencies used by implementation ----
 # TODO: Check if all those are really needed
-target_link_libraries(${APP_NAME} PRIVATE
+target_link_libraries(${APP_NAME} PUBLIC
   pico_stdlib
   FreeRTOS-Kernel
   FreeRTOS-Kernel-Heap4
