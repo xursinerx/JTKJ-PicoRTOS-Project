@@ -11,18 +11,6 @@
 extern "C" {
 #endif
 
-
-//--------------------------------------------------------------------+
-// Board Specific Configuration
-//--------------------------------------------------------------------+
-
-// USB Port Hub used. Pico just have one. 
-// Legacy RHPORT configuration
-#ifndef BOARD_TUD_RHPORT
-#define BOARD_TUD_RHPORT      0
-#endif
-//
-
 //--------------------------------------------------------------------
 // DEVICE CONFIGURATION
 //--------------------------------------------------------------------
@@ -35,19 +23,28 @@ extern "C" {
 // Define TinyUSB Operating system
 #ifndef CFG_TUSB_OS
 //Use this if you are using FreeRTOS
-#define CFG_TUSB_OS             OPT_OS_FREERTOS
+//#define CFG_TUSB_OS             OPT_OS_FREERTOS
 //Use this one outside FreeRTOS
-//#define CFG_TUSB_OS           OPT_OS_NONE
+#define CFG_TUSB_OS           OPT_OS_PICO
 #endif
 
 // Enable Device stack (vs Host stacki)
-#define CFG_TUD_ENABLED 1
+#define CFG_TUD_ENABLED (1)
 
+//--------------------------------------------------------------------+
+// Board Specific Configuration
+//--------------------------------------------------------------------+
+
+// USB Port Hub used. Pico just have one. 
+// Legacy RHPORT configuration
 // RHPort number used for device
 // For RP2040, there's only one USB port, so always use 0
 // Device mode and full speed (PICO USB ALWAYS GOES TO FULL SPEED)
 #ifndef CFG_TUSB_RHPORT0_MODE
 #define CFG_TUSB_RHPORT0_MODE (OPT_MODE_DEVICE | OPT_MODE_FULL_SPEED)
+#endif
+#ifndef BOARD_TUD_RHPORT
+#define BOARD_TUD_RHPORT        (0)
 #endif
 
 //Log from level 0 (no log) to level 3 (INFO DEBUG)
@@ -58,17 +55,17 @@ extern "C" {
 //------------- CLASS DRIVERS -------------//
 
 // Enable CDC (Communication Device Class) - we need TWO CDC interfaces
-#define CFG_TUD_CDC 2  // Enable 2 CDC interfaces instead of 1
+#define CFG_TUD_CDC (2)  // Enable 2 CDC interfaces instead of 1
 
 // CDC buffer sizes
 // These determine how much data can be buffered for USB communication
-#define CFG_TUD_CDC_RX_BUFSIZE 128   // Receive buffer size: 512 - 64 Depending size of data
-#define CFG_TUD_CDC_TX_BUFSIZE 256  // Transmit buffer size: 512 - 64 Depending size of data
-#define CFG_TUD_CDC_EP_BUFSIZE 64   // Size of the Endpoint Buffer. In Pico Must be 64 for full speed. 
+#define CFG_TUD_CDC_RX_BUFSIZE (512)   // Receive buffer size: 512 - 64 Depending size of data
+#define CFG_TUD_CDC_TX_BUFSIZE (128)  // Transmit buffer size: 512 - 64 Depending size of data
+#define CFG_TUD_CDC_EP_BUFSIZE (64)   // Size of the Endpoint Buffer. In Pico Must be 64 for full speed. 
 
 //Since Pico is Full Speed, endpoint0 size is always 64
 #ifndef CFG_TUD_ENDPOINT0_SIZE
-#define CFG_TUD_ENDPOINT0_SIZE  64
+#define CFG_TUD_ENDPOINT0_SIZE  (64)
 #endif
  
 

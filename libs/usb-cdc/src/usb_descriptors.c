@@ -81,7 +81,7 @@ uint8_t const desc_configuration[] = {
                           ITF_NUM_TOTAL, // Number of interfaces (2 CDC = 4 interfaces total)
                           0,             // String index
                           CONFIG_TOTAL_LEN, 
-                          TUSB_DESC_CONFIG_ATT_SELF_POWERED | TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP,          // attributes: bit7=1, bit6=self-powered, bit5=remote-wakeup
+                          TUSB_DESC_CONFIG_ATT_SELF_POWERED,          //  TUSB_DESC_CONFIG_ATT_SELF_POWERED | TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP attributes: bit7=1, bit6=self-powered, bit5=remote-wakeup
                           100),          //100mA      
 
     // CDC 0: Communication Interface - TODO: get 64 from tusb_config.h
@@ -91,16 +91,16 @@ uint8_t const desc_configuration[] = {
                                    8,                   // notification EP size
                                    EPNUM_CDC0_OUT,     //bulk OUT endpoint address (host->device)
                                    EPNUM_CDC0_IN,      // bulk IN  endpoint address (device->host)
-                                   64),                 // bulk max packet size (FS max = 64)
+                                   CFG_TUD_CDC_EP_BUFSIZE),                 // bulk max packet size (FS max = 64)
 
     // CDC 1: Communication Interface - TODO: get 64 from tusb_config.h
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 
-                                   4, 
+                                   5, 
                                    EPNUM_CDC1_NOTIF, 
                                    8, 
                                    EPNUM_CDC1_OUT, 
                                    EPNUM_CDC1_IN, 
-                                   64),
+                                   CFG_TUD_CDC_EP_BUFSIZE),
 
 };
 

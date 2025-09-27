@@ -29,7 +29,7 @@ set(PICO_BOARD pico_w CACHE STRING "Board type")
 include(pico_sdk_import.cmake)
 
 # Define app name once
-set(APP_NAME hat_example)
+set(APP_NAME jtkj_example)
 
 project(${APP_NAME} C CXX ASM)
 
