@@ -33,6 +33,7 @@ set(APP_NAME jtkj_example)
 
 project(${APP_NAME} C CXX ASM)
 
+
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
@@ -51,14 +52,12 @@ target_include_directories(FreeRTOS-Kernel INTERFACE
   ${CMAKE_CURRENT_LIST_DIR}/config
   )
   
-  
-  
-  # Add librabries. The TKJHAT does not use libraries from FreeRTOS
+    # Add librabries. The TKJHAT does not use libraries from FreeRTOS
   add_subdirectory(libs/TKJHAT)
   # Support for usb serial communication
-  add_subdirectory(libs/usb-cdc)
+  add_subdirectory(libs/usb-serial-debug)
   # Add examples
-  add_subdirectory(examples/test_cdc)
+  add_subdirectory(examples/test_dual_cdc)
   add_subdirectory(examples/test_microphone)
 
 
@@ -76,9 +75,10 @@ target_include_directories(FreeRTOS-Kernel INTERFACE
   # FreeRTOS-Kernel-Static
   target_link_libraries(${APP_NAME}
     pico_stdlib
+    FreeRTOS-Kernel
     FreeRTOS-Kernel-Heap4
     TKJHAT_SDK
-    cfg-usbcdc
+    cfg-dual-usbcdc
 )
 
 

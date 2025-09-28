@@ -11,6 +11,18 @@
 #include <tkjhat/sdk.h>
 #include <pico/binary_info.h>
 
+#if CFG_TUSB_OS != OPT_OS_FREERTOS
+# error "This should be using FREERTOS but the CFG_TUSB_OS is not OPT_OS_FREERTOS"
+#endif
+
+/*#if   CFG_TUSB_OS == OPT_OS_FREERTOS
+# pragma message("TinyUSB: FreeRTOS")
+#elif CFG_TUSB_OS == OPT_OS_PICO
+# pragma message("TinyUSB: OS PICO")
+#elif CFG_TUSB_OS == OPT_OS_NONE
+# pragma message("TinyUSB: sin RTOS")
+#endif*/
+
 // Flag to indicate button press
 volatile bool sw1_pressed = false;
 volatile bool sw2_pressed = false;

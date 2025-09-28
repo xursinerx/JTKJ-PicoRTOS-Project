@@ -25,7 +25,7 @@ int main (void) {
     tusb_init();
     //Initialize all USB (including stdio as CDC0)
     stdio_init_all();
-    while (!tud_cdc_n_connected(0)&&!tud_cdc_n_connected(1)){
+    while (!tud_cdc_n_connected(0) || !tud_cdc_n_connected(1)){
         tud_task();
         sleep_ms(10);
     }

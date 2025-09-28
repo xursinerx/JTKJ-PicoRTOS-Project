@@ -20,13 +20,12 @@ extern "C" {
 #define CFG_TUSB_MCU OPT_MCU_RP2040
 #endif
 
-// Define TinyUSB Operating system
-#ifndef CFG_TUSB_OS
-//Use this if you are using FreeRTOS
-//#define CFG_TUSB_OS             OPT_OS_FREERTOS
-//Use this one outside FreeRTOS
-#define CFG_TUSB_OS           OPT_OS_PICO
+// Do this only if using FreeRTOS
+#ifdef CFG_TUSB_OS
+  #undef CFG_TUSB_OS
 #endif
+#define CFG_TUSB_OS  OPT_OS_FREERTOS
+
 
 // Enable Device stack (vs Host stacki)
 #define CFG_TUD_ENABLED (1)

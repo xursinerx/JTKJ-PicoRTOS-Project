@@ -57,6 +57,7 @@
         "cstdint": "c",
         "string.h": "c",
         "stddef.h": "c",
-        "unique_id.h": "c"
+        "unique_id.h": "c",
+        "random": "c"
     }
 }
