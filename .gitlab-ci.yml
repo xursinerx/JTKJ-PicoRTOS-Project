@@ -1,0 +1,11 @@
+stages:
+  - mirror
+
+mirror_students_to_github:
+  stage: mirror
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "students"'
+  script:
+    - git remote add github https://$GITHUB_USER:$GITHUB_TOKEN@github.com/$GITHUB_REPO.git
+    # push "students" branch in GitLab to "main" branch in GitHub
+    - git push --force github HEAD:main
