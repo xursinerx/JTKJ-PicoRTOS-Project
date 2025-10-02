@@ -18,7 +18,7 @@ add_library(${APP_NAME} STATIC
 )
 
 # ---- headers / include paths ----
-# Public API headers live in include/  -> consumers: #include "SDK.h", "ssd1306.h", etc.
+# Public API headers live in include/  -> consumers: #include <tkjhat/sdk.h>, "ssd1306.h", etc.
 target_include_directories(${APP_NAME}
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -50,3 +50,17 @@ target_link_libraries(${APP_NAME} PUBLIC
 # (Optional) tighten C standard
 target_compile_features(${APP_NAME} PUBLIC c_std_11)
 message("Added support for the  TKJHAT_SDK library")
+
+
+#Documentation
+find_package(Doxygen QUIET)
+
+if (DOXYGEN_FOUND)
+  add_custom_target(tkjhat-doc
+    COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs
+    COMMENT "Generating TKJHAT SDK documentation with Doxygen"
+    VERBATIM)
+else()
+  message(STATUS "Doxygen not found — 'tkjhat-doc' target will be unavailable.")
+endif()

@@ -27,8 +27,13 @@ SOFTWARE.
 
 /**
  * @file tkjhat/sdk.h
+ * \author Raisul Islam
+ * \author Iván Sánchez Milara
  * @brief Public API for the JTKJ HAT SDK (Raspberry Pi Pico / Pico 2).
  *
+ * \par Contributors
+ * Emil Kelhala
+ * 
  * @version 0.8
  *
  * @details
@@ -560,7 +565,7 @@ bool i2c_read(uint8_t addr, uint8_t *dst, size_t len, bool nostop);
 // Library used can be found at: https://github.com/daschr/pico-ssd1306https://github.com/daschr/pico-ssd1306
 
 /**
- * @defgroup Display SSD1306 display helpers
+ * @defgroup Display SSD1306 (I²C addr 0x3C)
  * @brief Convenience API for the 128×64 SSD1306 I²C OLED (addr 0x3C).
  *
  * Uses the bundled pico-ssd1306 library to draw text and simple shapes.
