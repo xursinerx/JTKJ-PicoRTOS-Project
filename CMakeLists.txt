@@ -57,6 +57,8 @@ target_include_directories(FreeRTOS-Kernel INTERFACE
   # Support for usb serial communication
   add_subdirectory(libs/usb-serial-debug)
   # Add examples
+  add_subdirectory(examples/hello_pico)
+  add_subdirectory(examples/hello_freertos)
   add_subdirectory(examples/test_dual_cdc)
   add_subdirectory(examples/test_microphone)
 
