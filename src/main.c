@@ -293,7 +293,7 @@ int main() {
 
    
     // Initialize I2C
-    i2c_init_default(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
+    init_i2c_default();
     printf("Initializing the i2c\n");
 
     //Initialize Light Sesnsor VEML6030
@@ -312,7 +312,7 @@ int main() {
     //Microhpone test in test_microphone.c
 
     //Initialize IMU
-    if (ICM42670_init() == 0) {
+    if (init_ICM42670() == 0) {
         printf("ICM-42670P initialized successfully!\n");
         if (ICM42670_startAccel(ICM42670_ACCEL_ODR_DEFAULT, ICM42670_ACCEL_FSR_DEFAULT) != 0){
             printf("Wrong values to init the accelerometer in ICM-42670P.\n");

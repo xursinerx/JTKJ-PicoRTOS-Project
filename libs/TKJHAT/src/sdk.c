@@ -26,7 +26,6 @@ SOFTWARE.
 */
 
 #include <tkjhat/sdk.h>
-// #include <icm42670.h>
 
 //#include "tusb.h" //is it needed?
 #include "hardware/irq.h"
@@ -38,6 +37,10 @@ SOFTWARE.
 
 
 
+
+/* ===================================
+ *  UTILITIES / FIXING HARDWARE BUGS
+ * =================================== */
 
 //This trick tries to solve the leakage problem in rp2350 (Errata 9)
 #if defined(PICO_RP2350)
@@ -56,19 +59,21 @@ SOFTWARE.
     #define gpio_get(pin) gpio_get_safe((pin))
 #endif
 
-// By default these devices  are on bus address 0x68
-static int addr = 0x68;
 
 
-static ssd1306_t disp;
 
-
+/* =========================
+ *  GENERAL FUNCTIONS
+ * ========================= */
 void init_hat_sdk(){
     //Turn off the RGB
     stop_rgb_led();
 }
 
-// Button related function
+/* =========================
+ *  BUTTONS
+ * ========================= */
+
  void init_sw1() {
     // Initialize the button pin as an input with a pull-up resistor
     gpio_init(SW1_PIN);
@@ -82,11 +87,17 @@ void init_hat_sdk(){
     gpio_set_dir(SW2_PIN, GPIO_IN);
 }
 
-// LED related function
+/* =========================
+ *  LEDs
+ * ========================= */
  void init_red_led() {
     // Initialize the LED pin as an output
     gpio_init(RED_LED_PIN);
     gpio_set_dir(RED_LED_PIN, GPIO_OUT);
+}
+
+void init_led(){
+    return init_red_led();
 }
 
 void toggle_red_led() {
@@ -94,12 +105,19 @@ void toggle_red_led() {
     gpio_put(RED_LED_PIN, !curr);
 }
 
+void toglle_led() {
+    return toggle_red_led();
+}
+
 void set_red_led_status(bool status){
     gpio_put(RED_LED_PIN,status);
 }
 
-// Helper for debugging. It is inline:
-void blink(int n){
+void set_led_status(bool status){
+    return set_red_led_status(status);
+}
+
+void blink_red_led(int n){
     for (int i=0;i<n;i++){ 
         toggle_red_led(); 
         sleep_ms(120); 
@@ -107,6 +125,10 @@ void blink(int n){
         sleep_ms(120); 
     }
     gpio_put(RED_LED_PIN,false);
+}
+
+void blink_led(int n){
+    return blink_red_led(n);
 }
 
 
@@ -177,8 +199,10 @@ void stop_rgb_led(){
     pwm_set_gpio_level(RGB_LED_B, b_value);
 }
 
+/* =========================
+ *  BUZZER
+ * ========================= */
 
-// Buzzer-related functions
  void init_buzzer() {
     // Initialize the buzzer pin as an output
     gpio_init(BUZZER_PIN);
@@ -209,14 +233,20 @@ void deinit_buzzer() {
     gpio_deinit(BUZZER_PIN);
 }
 
-
+/* =========================
+ *  I2C
+ * ========================= */
 // Initialize I2C peripheral
-void i2c_init_default(uint sda_pin, uint scl_pin) {
+void init_i2c(uint sda_pin, uint scl_pin) {
     i2c_init(i2c_default, 400*1000);
     gpio_set_function(sda_pin, GPIO_FUNC_I2C);
     gpio_set_function(scl_pin, GPIO_FUNC_I2C);
     gpio_pull_up(sda_pin);
     gpio_pull_up(scl_pin);
+}
+
+void init_i2c_default(){
+    init_i2c(DEFAULT_I2C_SDA_PIN, DEFAULT_I2C_SCL_PIN);
 }
 
 // Generic I2C write function
@@ -284,6 +314,9 @@ int get_microphone_samples(int16_t* buffer, size_t samples) {
 /* =========================
  *  DISPLAY SSD1306
  * ========================= */
+// Datasheet can be found at: https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf
+// Library used can be found at: https://github.com/daschr/pico-ssd1306https://github.com/daschr/pico-ssd1306
+ static ssd1306_t disp;
 
 // Display-related functions
  void init_display() {
@@ -298,24 +331,7 @@ int get_microphone_samples(int16_t* buffer, size_t samples) {
     ssd1306_clear(&disp);
 }
 
-/**
- * @brief Draw a text string starting at (x0, y0).
- *
- * Writes the given string into the SSD1306 off-screen buffer at the
- * specified position, then updates the display.
- *
- * Coordinate system:
- *  - Origin (0,0) is top-left; X→right, Y→down.
- *
- * Preconditions:
- *  - `disp` must be initialized via ssd1306_init().
- *
- * @param x0   Start X in pixels (int16_t). Values < 0 are clamped to 0.
- * @param y0   Start Y in pixels (int16_t). Values < 0 are clamped to 0.
- * @param text Null-terminated C string to render.
- *
- * @note This uses font scale = 1 
- */
+
 void write_text_xy(int16_t x0, int16_t y0, const char *text) {
     if (!text) return;
 
@@ -395,28 +411,7 @@ static inline void hspan(int16_t x1, int16_t x2, int16_t y) {
         ssd1306_draw_pixel(&disp, (uint32_t)x, (uint32_t)y);
 }
 
-/**
- * @brief Draw a circle centered at (x0, y0) with radius r.
- *
- * Renders an outline or filled circle using the midpoint (Bresenham) algorithm.
- * Pixels are written into the off-screen buffer; out-of-bounds pixels are clipped.
- *
- * Coordinate system: origin (0,0) = top-left; X→right, Y→down.
- *
- * Preconditions:
- *  - `disp` must be initialized via ssd1306_init().
- *  - r >= 0. For r == 0, draws a single pixel at (x0, y0).
- *
- * @param x0   Center X (can be off-screen; clipped).
- * @param y0   Center Y (can be off-screen; clipped).
- * @param r    Radius in pixels (non-negative).
- * @param fill If true, draws a filled disk; otherwise, only the outline.
- *
- * @post Calls ssd1306_show(&disp) once at the end to update the panel.
- *       Remove that call if you prefer to batch multiple drawings.
- *
- * @complexity O(r)
- */
+
 void draw_circle(int16_t x0, int16_t y0, int16_t r, bool fill) {
     // Draw a circle using the Bresenham algorithm
     if (r < 0) 
@@ -492,16 +487,18 @@ void clear_display() {
     ssd1306_show(&disp);
 }
 
-void display_stop() {
+void stop_display() {
     ssd1306_poweroff(&disp);
 }
 
 
-// Light sensor related function
+/* =========================
+ *  LIGHT SENSOR VEML6030
+ * =========================  */
 // Useful info at: https://learn.sparkfun.com/tutorials/qwiic-ambient-light-sensor-veml6030-hookup-guide/all#arduino-library
 // Programming application: https://www.vishay.com/docs/84367/designingveml6030.pdf
 // Datasheet: https://www.vishay.com/docs/84366/veml6030.pdf
-void veml6030_init() {
+void init_veml6030() {
     // Configure sensor settings (100ms integration time, gain 1/8, power on)
     //Bit 12:11 = 10 (gain1/8)
     //Bit 9:6 = 0000 (Integration time 100ms)
@@ -553,7 +550,7 @@ uint32_t veml6030_read_light() {
 
 
 //This method might be utility method in the future.
-uint16_t _veml6030_read_register(uint8_t reg) {
+static uint16_t _veml6030_read_register(uint8_t reg) {
     uint8_t data[2] = {0,0};
 
     // Select ALS output register
@@ -579,6 +576,9 @@ void veml6030_stop(){
 
 
 
+/* ===============================================
+ *  TEMPERATURE AND HUMIDITY SENSOR HDC 2021
+ * ===============================================  */
 // Temperature & Humidity sensor related function
 // https://www.ti.com/lit/ds/symlink/hdc2021.pdf?ts=1757522824481&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FHDC2021
 // https://www.ti.com/lit/ug/snau250/snau250.pdf?ts=1757438909914
@@ -656,7 +656,7 @@ void hdc2021_set_low_humidity_threshold(float humid) {
 // Temperature resolution: 14 bits
 // Humidity resolution: 14 bits
 // It triggers continous measurements. 
- void hdc2021_init() {
+ void init_hdc2021_() {
     hdc2021_reset();
     hdc2021_set_high_temp_threshold(50);
     hdc2021_set_low_temp_threshold(-30);
@@ -692,7 +692,7 @@ float hdc2021_read_humidity() {
     return (raw * 100.0f / 65536.0f);
 }
 
-void hdc2021_stop() {
+void stop_hdc2021() {
     uint8_t cfg = read_hdc2021_register(HDC2021_CONFIG);  // 0x0E
     cfg &= 0x8F;  // clear AMM[2:0] (bits 6:4) -> 000 = AMM disabled
     write_register(HDC2021_CONFIG, cfg);
@@ -770,8 +770,8 @@ static void calibrateGyro(float *dest2){
 
 }
 
-int ICM42670_init() {
-    blink(5);
+int init_ICM42670() {
+    blink_led(5);
     
     //Soft reset
     icm_soft_reset();
@@ -917,6 +917,25 @@ int ICM42670_enable_accel_gyro_lp_mode(void) {
     return rc;
 }
 
+int start_sensor_with_default_values(void) {
+    int rc;
+
+    // Start accelerometer with defaults (e.g., 100 Hz, ±4 g)
+    rc = ICM42670_startAccel(ICM42670_ACCEL_ODR_DEFAULT,
+                             ICM42670_ACCEL_FSR_DEFAULT);
+    if (rc != 0) return rc;
+
+    // Start gyroscope with defaults (e.g., 100 Hz, ±250 dps)
+    rc = ICM42670_startGyro(ICM42670_GYRO_ODR_DEFAULT,
+                            ICM42670_GYRO_FSR_DEFAULT);
+    if (rc != 0) return rc;
+
+    // Put both sensors into Low-Noise mode
+    rc = ICM42670_enable_accel_gyro_ln_mode();
+    if (rc != 0) return rc;
+
+    return 0;
+}
 
 
 int ICM42670_read_sensor_data(float *ax, float *ay, float *az,
