@@ -88,6 +88,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     add_subdirectory(examples/hello_dual_cdc)
     add_subdirectory(examples/hello_microphone)
     add_subdirectory(examples/hello_hat)
+    add_subdirectory(examples/hello_blink_freertos)
 # =================================================================================
 
 
@@ -110,10 +111,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
     target_link_libraries(${MAIN_TARGET}
             pico_stdlib
-            FreeRTOS-Kernel
-            FreeRTOS-Kernel-Heap4
-            TKJHAT_SDK
-            cfg-dual-usbcdc
     )
 
     # Include libraries necessaries to control the WiFi. If you are using the internal pico LED in W model, it is also 
