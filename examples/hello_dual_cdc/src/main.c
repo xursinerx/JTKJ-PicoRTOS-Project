@@ -1,13 +1,14 @@
-
-
-#include "FreeRTOS.h"
 #include <time.h>
 #include <stdlib.h>
-#include "pico/stdlib.h"
 #include <string.h>
-#include "task.h"
-#include <tusb.h>
+
+#include <pico/stdlib.h>
 #include <pico/stdio.h>
+
+#include <tusb.h>
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "usbSerialDebug/helper.h"
 
 #define BUFFER_SIZE     30
@@ -18,13 +19,13 @@
 #define CDC_ITF_TX      1
 
 
-#if   CFG_TUSB_OS == OPT_OS_FREERTOS
+/*#if   CFG_TUSB_OS == OPT_OS_FREERTOS
 #pragma message "TinyUSB: FreeRTOS"
 #elif CFG_TUSB_OS == OPT_OS_PICO
 #pragma message("TinyUSB: OS PICO")
 #elif CFG_TUSB_OS == OPT_OS_NONE
 #pragma message("TinyUSB: sin RTOS")
-#endif
+#endif*/
 
 #if CFG_TUSB_OS != OPT_OS_FREERTOS
 #error "This should be using FREERTOS but the CFG_TUSB_OS is not OPT_OS_FREERTOS"
@@ -55,12 +56,13 @@ static void sensorTask (void *arg){
         int lux  = rand_in_range(LUX_MIN,  LUX_MAX);
         
         if(tud_cdc_n_connected(CDC_ITF_TX)){
-            //Send them using tucdc_n_write}
+            //Send them using tucdc_n_write to the ACM1
             snprintf(buf, BUFFER_SIZE,"%d, %d\n", temp, lux);
             tud_cdc_n_write(CDC_ITF_TX,buf,strlen(buf));
             tud_cdc_n_write_flush(CDC_ITF_TX);
             
         }
+        //Send also the debug log to the ACM0
         if (usb_serial_connected()) {
             snprintf(buf, BUFFER_SIZE,"temp:%d, light:%d\n", temp, lux);
             usb_serial_print(buf);
