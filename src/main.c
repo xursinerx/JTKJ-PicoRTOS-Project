@@ -26,15 +26,23 @@ void pico_set_led(bool led_on) {
 }
 
 int main() {
+    // Init the LED
     pico_led_init();
+    // Initalize stdout so we can printout
     stdio_init_all();
+    // Sending messages to terminal.
     printf("Initiating\n");
    
     while (true) {
+        //Turn the led 0n
         pico_set_led(true);
+        // Wait 1 s
         sleep_ms(LED_DELAY_MS);
+        // Turn the led off
         pico_set_led(false);
+        // Wait one second
         sleep_ms(LED_DELAY_MS);
+        // Communicate the tick
         printf("Tick\n");
     }
 }
