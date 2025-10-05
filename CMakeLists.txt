@@ -6,18 +6,18 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# == TODO at the beginning. Define the Project name and name for the main target (app).
+# == EDIT at the beginning. Define the Project name and name for the main target (app).=========
 # Define project name
 set(APP_NAME JTKJ_app) 
 # Define main app (app in this folder)
 set(MAIN_TARGET hello_blink)
-#================================================================================
+#===============================================================================================
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
 
-# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
+# == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work =======
 if(WIN32)
     set(USERHOME $ENV{USERPROFILE})
 else()
@@ -30,9 +30,9 @@ set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
-# ====================================================================================
+# ================================================================================================
 
-# == SETUP pico SDK and crete project =================================================
+# == DO NOT EDIT:  SETUP pico SDK and crete project ==============================================
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
@@ -43,9 +43,9 @@ project(${APP_NAME} C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# =====================================================================================
+# =================================================================================================
 
-# Configure FreeRTOS =================================================================
+# DO NOT EDIT: Configure FreeRTOS =================================================================
 # First include FreeRTOS Kernel libraries
 include(FreeRTOS_Kernel_import.cmake)
 
@@ -69,18 +69,19 @@ ${CMAKE_CURRENT_LIST_DIR}/config
 # library that fits better: Kernel-Heap1 thru FreeRTOS-Kernel_Heap4 or FreeRTOS-Kernel-Static
 # default 
 
-# ==================================================================================
+# ===============================================================================================
 
 
-# Prepare the build to compile different libraries of the project ==================
+# DO NOT EDIT: Prepare the build to compile different libraries of the project ==================
 # Add librabries. The TKJHAT does not use libraries from FreeRTOS
 add_subdirectory(libs/TKJHAT)
 # Support for usb serial communication
 add_subdirectory(libs/usb-serial-debug)
 # If created new libraries, include them here. 
-# ==================================================================================
+# You can EDIT it if you add new libraries
+# ===============================================================================================
 
-# Prepare build to compile the different examples ==================================
+# DO NOT EDIT: Prepare build to compile the different examples ==================================
 # Add examples
 add_subdirectory(examples/hello_pico)
 add_subdirectory(examples/hello_freertos)
@@ -88,10 +89,11 @@ add_subdirectory(examples/hello_dual_cdc)
 add_subdirectory(examples/hello_microphone)
 add_subdirectory(examples/hello_hat)
 add_subdirectory(examples/hello_blink_freertos)
-# =================================================================================
+# You can edit it if you want to add new examples
+# ==============================================================================================
 
 
-# Prepare build to compile the main target (in root src folder) ===================
+# EDIT: Prepare build to compile the main target (in root src folder) ==========================
 # NOTE: If you are creating some example you would need to include these lines
 # in the example CMakeLists.txt
 
