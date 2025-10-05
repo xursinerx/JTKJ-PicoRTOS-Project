@@ -32,7 +32,7 @@ if (EXISTS ${picoVscode})
 endif()
 # ================================================================================================
 
-# == DO NOT EDIT:  SETUP pico SDK and crete project ==============================================
+# == DO NOT EDIT:  SETUP pico SDK and create project ==============================================
 set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
