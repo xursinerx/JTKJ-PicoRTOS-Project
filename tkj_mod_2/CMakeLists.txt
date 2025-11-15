@@ -10,7 +10,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Define project name
 set(tkj_mod_2 JTKJ_app) 
 # Define main app (app in this folder)
-set(DEFAULT_TARGET tkj_mod_2)
+set(MAIN_TARGET tkj_mod_2)
 #===============================================================================================
 
 # Initialise pico_sdk from installed location
@@ -85,15 +85,15 @@ add_subdirectory(libs/usb-serial-debug)
 # Add examples if necessary here
 # Uncomment the examples that you want to include in your project.
 #
-add_subdirectory(examples/hello_blink)
-add_subdirectory(examples/hello_blink_freertos)
+# add_subdirectory(examples/hello_blink)
+# add_subdirectory(examples/hello_blink_freertos)
 # add_subdirectory(examples/hello_pico)
 # add_subdirectory(examples/hello_freertos)
-add_subdirectory(examples/hello_dual_cdc)
+# add_subdirectory(examples/hello_dual_cdc)
 # add_subdirectory(examples/hello_microphone)
 # add_subdirectory(examples/compilation_errors)
-add_subdirectory(examples/hello_hat)
-add_subdirectory(examples/hat_example)
+# add_subdirectory(examples/hello_hat)
+# add_subdirectory(examples/hat_example)
 #
 # You can edit it if you want to add new examples
 # ==============================================================================================
