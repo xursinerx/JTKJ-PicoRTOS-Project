@@ -16,6 +16,28 @@ set(MAIN_TARGET tkj_mod_2)
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
 
+# Initialise the Raspberry Pi Pico SDK
+pico_sdk_init()
+
+# Include FreeRTOS Kernel libraries
+include(FreeRTOS_Kernel_import.cmake)
+
+# Include config only for FreeRTOS target. 
+target_include_directories(FreeRTOS-Kernel INTERFACE
+${CMAKE_CURRENT_LIST_DIR}/config
+)
+
+# Add executable
+add_executable(tkj_mod_2
+  src/main.c
+)
+
+# Link libraries
+# target_link_libraries(blink
+#   pico_stdlib
+#   FreeRTOS-Kernel
+#   FreeRTOS-Kernel-Heap4
+# )
 
 # == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work =======
 if(WIN32)
