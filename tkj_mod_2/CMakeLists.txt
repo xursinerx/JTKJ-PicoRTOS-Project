@@ -8,9 +8,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # == EDIT at the beginning. Define the Project name and name for the main target (app).=========
 # Define project name
-set(APP_NAME JTKJ_app) 
+set(tkj_mod_2 JTKJ_app) 
 # Define main app (app in this folder)
-set(MAIN_TARGET hat_app)
+set(DEFAULT_TARGET tkj_mod_2)
 #===============================================================================================
 
 # Initialise pico_sdk from installed location
